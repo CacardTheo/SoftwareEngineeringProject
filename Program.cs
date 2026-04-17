@@ -1,47 +1,66 @@
 ﻿using System;
-using System.IO;
-using SoftwareEngineeringProject; // Assure-toi que le namespace correspond au tien
+using System.Collections.Generic;
+using System.Linq;
+
+namespace SoftwareEngineeringProject;
 
 class Program
 {
     static void Main(string[] args)
     {
-        string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        string sourceDir = Path.Combine(desktopPath, "EasySave_Source");
-        string targetDir = Path.Combine(desktopPath, "EasySave_Target");
+        // On initialise le moteur (Singleton)
+        var engine = JobManager.GetInstance();
 
-        SetupTestEnvironment(sourceDir, targetDir);
+        // 1. Si aucun argument, on affiche l'aide ou on lance l'UI Console
+        if (args.Length == 0)
+        {
+            Console.WriteLine("EasySave v1.0 - Use arguments: 1-3 or 1;3");
+            return;
+        }
 
-        BackupEngine engine = new BackupEngine();
+        // 2. Parsing des arguments (ex: "1-3" ou "1;3")
+        List<int> jobIndexesToRun = ParseArguments(args[0]);
 
-        Console.WriteLine("\n--- TEST 1 : FULL BACKUP ---");
-        BackupJob fullJob = new BackupJob("Job_Full", sourceDir, targetDir, BackupType.Full);
-        engine.Execute(fullJob);
-
-        Console.WriteLine("\n--- TEST 2 : DIFFERENTIAL (No changes) ---");
-        BackupJob diffJob = new BackupJob("Job_Diff", sourceDir, targetDir, BackupType.Differential);
-        engine.Execute(diffJob);
-
-        Console.WriteLine("\n--- TEST 3 : DIFFERENTIAL (After 1 modification) ---");
-        File.AppendAllText(Path.Combine(sourceDir, "file1.txt"), " - Modification !");
-        engine.Execute(diffJob);
-
-        Console.WriteLine("\nTests terminés. Appuyez sur une touche pour quitter.");
-        Console.ReadKey();
+        // 3. Exécution des jobs via le moteur
+        if (jobIndexesToRun.Any())
+        {
+            Console.WriteLine($"Starting execution for jobs: {string.Join(", ", jobIndexesToRun)}...");
+            engine.ExecuteJob(jobIndexesToRun[0]);
+        }
+        else
+        {
+            Console.WriteLine("No valid job index provided.");
+        }
     }
 
-    static void SetupTestEnvironment(string source, string target)
+    private static List<int> ParseArguments(string input)
     {
-        if (Directory.Exists(source)) Directory.Delete(source, true);
-        if (Directory.Exists(target)) Directory.Delete(target, true);
+        var indexes = new List<int>();
 
-        Directory.CreateDirectory(source);
+        // Cas "1-3" (Plage)
+        if (input.Contains('-'))
+        {
+            var parts = input.Split('-');
+            if (int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
+            {
+                for (int i = start; i <= end; i++) indexes.Add(i);
+            }
+        }
+        // Cas "1;3" (Liste)
+        else if (input.Contains(';'))
+        {
+            var parts = input.Split(';');
+            foreach (var part in parts)
+            {
+                if (int.TryParse(part, out int idx)) indexes.Add(idx);
+            }
+        }
+        // Cas d'un seul index "1"
+        else if (int.TryParse(input, out int idx))
+        {
+            indexes.Add(idx);
+        }
 
-        File.WriteAllText(Path.Combine(source, "file1.txt"), "Contenu initial du fichier 1");
-        File.WriteAllText(Path.Combine(source, "file2.txt"), "Contenu initial du fichier 2");
-
-        Console.WriteLine($"Environnement de test créé sur le Bureau.");
-        Console.WriteLine($"Source: {source}");
-        Console.WriteLine($"Target: {target}");
+        return indexes;
     }
 }
