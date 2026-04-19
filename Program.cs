@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EasySave.Localization;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,15 +7,23 @@ namespace SoftwareEngineeringProject;
 
 class Program
 {
+    private static ILanguage _language;
+    private static LanguageFactory _languageFactory = new LanguageFactory();
     static void Main(string[] args)
     {
+        // Ici j'ai ajouté une sélection de langue au démarrage, mais on pourrait aussi la faire via un menu ou un fichier de config ( On verra plus tard )
+
+        Console.WriteLine("Select language (en/fr): ");
+        string lang = Console.ReadLine();
+        _language = _languageFactory.CreateLanguage(lang);
+
         // On initialise le moteur (Singleton)
         var engine = JobManager.GetInstance();
 
         // 1. Si aucun argument, on affiche l'aide ou on lance l'UI Console
         if (args.Length == 0)
         {
-            Console.WriteLine("EasySave v1.0 - Use arguments: 1-3 or 1;3");
+            Console.WriteLine(_language.GetText(LanguageKeys.APP_HELP));
             return;
         }
 
@@ -24,12 +33,15 @@ class Program
         // 3. Exécution des jobs via le moteur
         if (jobIndexesToRun.Any())
         {
-            Console.WriteLine($"Starting execution for jobs: {string.Join(", ", jobIndexesToRun)}...");
+            Console.WriteLine(
+                _language.GetText(LanguageKeys.START_EXECUTION)
+                + string.Join(", ", jobIndexesToRun)
+                );
             engine.ExecuteJob(jobIndexesToRun[0]);
         }
         else
         {
-            Console.WriteLine("No valid job index provided.");
+            Console.WriteLine(_language.GetText(LanguageKeys.NO_JOB));
         }
     }
 
