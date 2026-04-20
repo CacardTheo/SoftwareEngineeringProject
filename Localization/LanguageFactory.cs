@@ -1,10 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace SoftwareEngineeringProject.Localization
+﻿namespace EasySave.Localization
 {
-    internal class LanguageFactory
+    public class LanguageFactory
     {
+        public ILanguage CreateLanguage(string code)
+        {
+            return code.ToLower() switch
+            {
+                "fr" => new FrLanguage(),
+                "en" => new EnLanguage(),
+                _ => new EnLanguage()
+            };
+        }
     }
 }
