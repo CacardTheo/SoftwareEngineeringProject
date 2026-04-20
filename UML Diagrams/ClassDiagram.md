@@ -4,6 +4,7 @@ classDiagram
         class ConsoleView {
             -BackupManager manager
             -LanguageManager langManager
+            -CommandParser parser
             +Run(string[] args) void
             -DisplayMenu() void
             -HandleUserInput() void
