@@ -1,5 +1,5 @@
 classDiagram
-    %% Presentation Layer
+    %% --- PRESENTATION LAYER ---
     subgraph Presentation
         class ConsoleView {
             -BackupManager manager
@@ -8,83 +8,81 @@ classDiagram
             +Run(string[] args) void
             -DisplayMenu() void
             -HandleUserInput() void
-            -DisplayJobs() void
             -DisplayProgress(StateEntry) void
+            +Update(LogEntry, StateEntry) void %% Implémentation Observer
         }
         class CommandParser {
             +Parse(string[] args) List~int~
             -ParseRange(string) List~int~
-            -ParseSelection(string) List~int~
         }
         class LanguageManager {
             -string _currentLanguage
             -Dictionary~string, string~ _strings
             +GetString(string key) string
             +SetLanguage(string lang) void
-            +GetAvailableLanguages() List~string~
         }
     end
 
-    %% Business Logic Layer
+    %% --- BUSINESS LOGIC LAYER (Sujet de l'Observer) ---
     subgraph BusinessLogic
         class BackupManager {
             -List~BackupJob~ jobs
-            -IBackupStrategy _strategy
+            -List~IObserver~ _observers
             -StateManager _stateManager
             -ConfigManager _configManager
             -Logger _logger
-            +CreateJob(BackupJob) void
-            +DeleteJob(int index) void
-            +ExecuteJob(int index) void
-            +ExecuteAllJobs() void
+            +Attach(IObserver) void
+            +Detach(IObserver) void
             +ExecuteJobs(List~int~ indices) void
-            +GetJobs() List~BackupJob~
-            -SelectStrategy(BackupType) IBackupStrategy
+            -Notify(LogEntry, StateEntry) void
+        }
+        
+        class IObserver {
+            <<interface>>
+            +Update(LogEntry, StateEntry) void
         }
     end
 
-    %% Data Access Layer
+    %% --- DATA ACCESS & LOGS (Observers) ---
     subgraph DataAccess
         class ConfigManager {
-            -string _configFilePath
             +SaveJobs(List~BackupJob~) void
             +LoadJobs() List~BackupJob~
         }
         class StateManager {
             -string _stateFilePath
             +UpdateState(StateEntry) void
-            +LoadState() List~StateEntry~
-            +ClearState() void
         }
     end
 
-    %% EasyLogDLL
     subgraph EasyLogDLL
         class Logger {
             -string _logDirectory
             +Log(LogEntry entry) void
-            -GetDailyFilePath() string
-            -SerializeEntry(LogEntry) string
+            +Update(LogEntry, StateEntry) void %% Devient Observer
         }
     end
 
-    %% Strategy Pattern
+    %% --- STRATEGY PATTERN & FACTORY ---
     subgraph Strategy
         class IBackupStrategy {
             <<interface>>
-            +Execute(BackupJob, Action~LogEntry~, Action~StateEntry~) void
+            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
         }
         class FullBackupStrategy {
-            +Execute(BackupJob, Action~LogEntry~, Action~StateEntry~) void
-            -CopyAllFiles(string src, string dest) void
+            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
+            -CopyAllFiles(BackupJob, Action~LogEntry, StateEntry~) void
         }
         class DifferentialBackupStrategy {
-            +Execute(BackupJob, Action~LogEntry~, Action~StateEntry~) void
-            -GetModifiedFiles(string src, DateTime since) List~string~
+            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
+            -GetModifiedFiles(BackupJob, Action~LogEntry, StateEntry~) void
+        }
+        class StrategyFactory {
+            +static CreateStrategy(BackupType) IBackupStrategy
         }
     end
 
-    %% Models
+    %% --- MODELS ---
     subgraph Models
         class BackupJob {
             +string Name
@@ -104,48 +102,33 @@ classDiagram
             +string JobName
             +DateTime LastActionTimestamp
             +BackupStatus Status
-            +int TotalFiles
-            +long TotalSize
             +int Progress
-            +int RemainingFiles
-            +long RemainingSize
             +string CurrentSourceFile
             +string CurrentDestFile
         }
     end
 
-    %% Enums
-    subgraph Enums
-        class BackupType {
-            <<enumeration>>
-            Full
-            Differential
-        }
-        class BackupStatus {
-            <<enumeration>>
-            Active
-            Inactive
-            End
-        }
-    end
+    %% --- RELATIONS ---
+    
+    %% Héritage et Réalisation
+    IBackupStrategy <|.. FullBackupStrategy
+    IBackupStrategy <|.. DifferentialBackupStrategy
+    IObserver <|.. Logger
+    IObserver <|.. StateManager
+    IObserver <|.. ConsoleView
 
-    %% Relationships
-    ConsoleView ..> BackupManager : depends on
-    ConsoleView --> CommandParser : uses
-    ConsoleView --> LanguageManager : uses
-
-    BackupManager "1" --> "*" BackupJob : manages
-    BackupManager --> ConfigManager : uses
-    BackupManager --> StateManager : uses
-    BackupManager --> Logger : uses
-    BackupManager --> IBackupStrategy : uses
-
-    ConfigManager ..> BackupJob : serializes
-    StateManager ..> StateEntry : writes
-    Logger ..> LogEntry : creates
-
-    IBackupStrategy <|.. FullBackupStrategy : implements
-    IBackupStrategy <|.. DifferentialBackupStrategy : implements
-
-    BackupJob --> BackupType : has
-    StateEntry --> BackupStatus : has
+    %% Associations (Flèches pleines = Instances d'objet)
+    ConsoleView "1" --> "1" BackupManager : gère
+    BackupManager "1" --> "0..5" BackupJob : possède
+    BackupManager "1" o-- "*" IObserver : liste d'observateurs
+    
+    %% Dépendances (Flèches pointillées = Utilisation ponctuelle)
+    ConsoleView ..> CommandParser : utilise
+    ConsoleView ..> LanguageManager : utilise
+    BackupManager ..> StrategyFactory : demande la création
+    StrategyFactory ..> IBackupStrategy : crée
+    
+    %% Relations vers les modèles
+    ConfigManager ..> BackupJob : sérialise
+    StateManager ..> StateEntry : écrit
+    Logger ..> LogEntry : crée
