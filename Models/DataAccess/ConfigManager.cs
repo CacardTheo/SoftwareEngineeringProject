@@ -17,6 +17,6 @@ public class ConfigManager
             return new List<BackupJob>();
 
         string json = File.ReadAllText(_configFilePath);
-        return JsonSerializer.Deserialize<List<BackupJob>>(json);
+        return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new List<BackupJob>();
     }
 }
