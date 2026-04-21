@@ -24,10 +24,12 @@ public class ConsoleView
 
     private void DisplayMenu()
     {
-        Console.WriteLine("\n--- EasySave Console ---");
-        Console.WriteLine("1. List Jobs");
-        Console.WriteLine("2. Execute Jobs (ex: 1;3 or 1-5)");
-        Console.WriteLine("3. Exit");
+        Console.Clear();
+        Console.WriteLine(_langManager.GetString("Menu_Title"));
+        Console.WriteLine(_langManager.GetString("Menu_Option_Run"));
+        Console.WriteLine(_langManager.GetString("Menu_Option_Language"));
+        Console.WriteLine(_langManager.GetString("Menu_Option_Quit"));
+        Console.Write(_langManager.GetString("Selection_Prompt"));
     }
 
     private void HandleUserInput()
@@ -56,5 +58,16 @@ public class ConsoleView
         {
             Console.WriteLine($"{i + 1}. {jobs[i].Name} [{jobs[i].Type}]");
         }
+    }
+
+    private void HandleLanguageSelection()
+    {
+        Console.WriteLine("Select Language: 1. English | 2. Français");
+        var choice = Console.ReadLine();
+
+        if (choice == "2") _langManager.SetLanguage("fr");
+        else _langManager.SetLanguage("en");
+
+        DisplayMenu();
     }
 }

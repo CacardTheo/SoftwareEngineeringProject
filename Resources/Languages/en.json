@@ -1,0 +1,8 @@
+{
+  "Menu_Title": "--- EASY SAVE VERSION 1.0 ---",
+  "Menu_Option_Run": "1. Execute backup jobs",
+  "Menu_Option_Language": "2. Change language",
+  "Menu_Option_Quit": "Q. Quit",
+  "Selection_Prompt": "Your choice: ",
+  "Job_Running": "Running: {0}..."
+}
