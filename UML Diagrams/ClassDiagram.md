@@ -1,134 +1,94 @@
 classDiagram
-    %% --- PRESENTATION LAYER ---
-    subgraph Presentation
-        class ConsoleView {
-            -BackupManager manager
-            -LanguageManager langManager
-            -CommandParser parser
-            +Run(string[] args) void
-            -DisplayMenu() void
-            -HandleUserInput() void
-            -DisplayProgress(StateEntry) void
-            +Update(LogEntry, StateEntry) void %% Implémentation Observer
-        }
-        class CommandParser {
-            +Parse(string[] args) List~int~
-            -ParseRange(string) List~int~
-        }
-        class LanguageManager {
-            -string _currentLanguage
-            -Dictionary~string, string~ _strings
-            +GetString(string key) string
-            +SetLanguage(string lang) void
-        }
-    end
+    %% --- PRESENTATION ---
+    class ConsoleView {
+        -MainViewModel viewModel
+        +ShowMenu() void
+        +ReadInput() string
+    }
 
-    %% --- BUSINESS LOGIC LAYER (Sujet de l'Observer) ---
-    subgraph BusinessLogic
-        class BackupManager {
-            -List~BackupJob~ jobs
-            -List~IObserver~ _observers
-            -StateManager _stateManager
-            -ConfigManager _configManager
-            -Logger _logger
-            +Attach(IObserver) void
-            +Detach(IObserver) void
-            +ExecuteJobs(List~int~ indices) void
-            -Notify(LogEntry, StateEntry) void
-        }
-        
-        class IObserver {
-            <<interface>>
-            +Update(LogEntry, StateEntry) void
-        }
-    end
+    class MainViewModel {
+        -BackupProcessor processor
+        -LanguageManager langManager
+        +RunJob(int id) void
+        +ChangeLanguage(string lang) void
+    }
 
-    %% --- DATA ACCESS & LOGS (Observers) ---
-    subgraph DataAccess
-        class ConfigManager {
-            +SaveJobs(List~BackupJob~) void
-            +LoadJobs() List~BackupJob~
-        }
-        class StateManager {
-            -string _stateFilePath
-            +UpdateState(StateEntry) void
-        }
-    end
+    %% --- MODELS (Data Structures) ---
+    class BackupJob {
+        +string Name
+        +string SourceDir
+        +string TargetDir
+        +string Type
+    }
 
-    subgraph EasyLogDLL
-        class Logger {
-            -string _logDirectory
-            +Log(LogEntry entry) void
-            +Update(LogEntry, StateEntry) void %% Devient Observer
-        }
-    end
+    class LogEntry {
+        +DateTime Timestamp
+        +string BackupName
+        +string SourcePath
+        +string DestinationPath
+        +long FileSize
+        +int TransferTime
+    }
 
-    %% --- STRATEGY PATTERN & FACTORY ---
-    subgraph Strategy
-        class IBackupStrategy {
-            <<interface>>
-            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
-        }
-        class FullBackupStrategy {
-            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
-            -CopyAllFiles(BackupJob, Action~LogEntry, StateEntry~) void
-        }
-        class DifferentialBackupStrategy {
-            +Execute(BackupJob, Action~LogEntry, StateEntry~) void
-            -GetModifiedFiles(BackupJob, Action~LogEntry, StateEntry~) void
-        }
-        class StrategyFactory {
-            +static CreateStrategy(BackupType) IBackupStrategy
-        }
-    end
+    class StateEntry {
+        +string JobName
+        +string Status
+        +int Progress
+        +long RemainingSize
+        +string CurrentSourceFile
+    }
 
-    %% --- MODELS ---
-    subgraph Models
-        class BackupJob {
-            +string Name
-            +string SourceDirectory
-            +string TargetDirectory
-            +BackupType Type
-        }
-        class LogEntry {
-            +DateTime Timestamp
-            +string BackupName
-            +string SourcePath
-            +string DestinationPath
-            +long FileSize
-            +long TransferTimeMs
-        }
-        class StateEntry {
-            +string JobName
-            +DateTime LastActionTimestamp
-            +BackupStatus Status
-            +int Progress
-            +string CurrentSourceFile
-            +string CurrentDestFile
-        }
-    end
+    %% --- LOGIC & STRATEGY ---
+    class BackupProcessor {
+        -IBackupStrategy strategy
+        -EasyLog logger
+        -StateManager stateManager
+        +Execute(BackupJob job) void
+    }
+
+    class IBackupStrategy {
+        <<interface>>
+        +Backup(BackupJob job) void
+    }
+
+    class FullBackup {
+        +Backup(BackupJob job) void
+    }
+
+    class DifferentialBackup {
+        +Backup(BackupJob job) void
+    }
+
+    %% --- SERVICES (Handlers) ---
+    class EasyLog {
+        +Save(LogEntry entry) void
+    }
+
+    class StateManager {
+        +Update(StateEntry state) void
+    }
+
+    class LanguageManager {
+        <<Singleton>>
+        -static LanguageManager _instance
+        -string currentLanguage
+        +static GetInstance() LanguageManager
+        +SetLanguage(string lang) void
+        +GetText(string key) string
+    }
 
     %% --- RELATIONS ---
     
-    %% Héritage et Réalisation
-    IBackupStrategy <|.. FullBackupStrategy
-    IBackupStrategy <|.. DifferentialBackupStrategy
-    IObserver <|.. Logger
-    IObserver <|.. StateManager
-    IObserver <|.. ConsoleView
-
-    %% Associations (Flèches pleines = Instances d'objet)
-    ConsoleView "1" --> "1" BackupManager : gère
-    BackupManager "1" --> "0..5" BackupJob : possède
-    BackupManager "1" o-- "*" IObserver : liste d'observateurs
+    ConsoleView --> MainViewModel : interacts with
+    MainViewModel --> BackupProcessor : controls
+    MainViewModel --> LanguageManager : uses
     
-    %% Dépendances (Flèches pointillées = Utilisation ponctuelle)
-    ConsoleView ..> CommandParser : utilise
-    ConsoleView ..> LanguageManager : utilise
-    BackupManager ..> StrategyFactory : demande la création
-    StrategyFactory ..> IBackupStrategy : crée
+    IBackupStrategy <|.. FullBackup : implements
+    IBackupStrategy <|.. DifferentialBackup : implements
+    BackupProcessor --> IBackupStrategy : uses
+    BackupProcessor --> EasyLog : calls
+    BackupProcessor --> StateManager : calls
     
-    %% Relations vers les modèles
-    ConfigManager ..> BackupJob : sérialise
-    StateManager ..> StateEntry : écrit
-    Logger ..> LogEntry : crée
+    BackupProcessor ..> BackupJob : reads
+    EasyLog ..> LogEntry : writes
+    StateManager ..> StateEntry : manages
