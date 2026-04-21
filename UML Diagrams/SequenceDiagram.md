@@ -1,36 +1,45 @@
 sequenceDiagram
-    actor User
+    autonumber
+    actor U as User
     participant CV as ConsoleView
-    participant CP as CommandParser
-    participant BM as BackupManager
-    participant CM as ConfigManager
-    participant SM as StateManager
+    participant VM as MainViewModel
+    participant BP as BackupProcessor
     participant BS as IBackupStrategy
-    participant L as Logger (EasyLog.dll)
+    participant SM as StateManager
+    participant EL as EasyLog
 
-    User->>CV: Run("EasySave.exe 1")
-    CV->>CP: Parse(args)
-    CP-->>CV: List<Int> {1}
-    CV->>BM: ExecuteJob(1)
+    U->>CV: Input Job ID
+    CV->>VM: RunJob(id)
     
-    BM->>CM: LoadJobs()
-    CM-->>BM: List<BackupJob>
+    activate VM
+    VM->>BP: Execute(job)
+    activate BP
     
-    BM->>BM: SelectStrategy(job.Type)
-    Note right of BM: Returns FullBackupStrategy<br/>or DifferentialBackupStrategy
+    %% State: Started
+    BP->>SM: Update(stateEntry: "Started")
     
-    BM->>SM: UpdateState(entry: Active)
-    BM->>BS: Execute(job, onLog, onState)
+    BP->>BS: Backup(job)
+    activate BS
     
-    rect rgb(240, 240, 240)
-        Note over BS, L: loop [For each file in source directory]
-        BS->>BS: Copy file from source to target
-        BS->>L: Log(LogEntry)
-        L->>L: Write to daily JSON file
-        BS->>SM: UpdateState(progress++)
+    %% State: In Progress (Simulation)
+    loop During execution
+        BS-->>BP: Progress details
+        BP->>SM: Update(stateEntry: "In Progress")
     end
-
-    BS-->>BM: Execution complete
-    BM->>SM: UpdateState(entry: End)
-    BM-->>CV: Job completed
-    CV-->>User: Display "Backup complete"
+    
+    BS-->>BP: Execution finished
+    deactivate BS
+    
+    %% State: Finished & Logging
+    par Finalization
+        BP->>SM: Update(stateEntry: "Finished")
+        BP->>EL: Save(logEntry)
+    end
+    
+    BP-->>VM: Task Completed
+    deactivate BP
+    
+    VM-->>CV: Notify View
+    deactivate VM
+    
+    CV-->>U: Display Success Message
