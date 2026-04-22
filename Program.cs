@@ -3,9 +3,10 @@
 namespace SoftwareEngineeringProject
 {
     class Program
+    // Bootstrapping of the application
     {
         /// <summary>
-        /// Entry point of the EasySave application.
+        /// Entry point of the application.
         /// </summary>
         /// <param name="args">Command line arguments passed to the application.</param>
         static void Main(string[] args)

@@ -1,6 +1,6 @@
 public class DifferentialBackupStrategy : IBackupStrategy
 {
-    public void Execute(string SourceDirectory, string TargetDirectory)
+    public void Backup(BackupJob job)
     {
         // Execute logic for differential backup here
     }
