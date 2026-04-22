@@ -14,23 +14,6 @@ namespace SoftwareEngineeringProject.ViewModels
         {
             _languageManager = LanguageManager.GetInstance();
             _backupProcessor = new BackupProcessor(new StateManager());
-            BackupJob jobBase = new BackupJob
-            {
-                Name = "Move From D: To E:",
-                SourceDir = "D:\\EasySaveSource",
-                TargetDir = "E:\\EasySaveTarget",
-                Type = BackupType.Full
-            };
-            for (int i = 0; i < 5; i++)
-            {
-                _jobs.Add(new BackupJob
-                {
-                    Name = $"Move From D: To E: {i + 1}",
-                    SourceDir = "D:\\EasySaveSource",
-                    TargetDir = "E:\\EasySaveTarget",
-                    Type = BackupType.Full
-                });
-            }
         }
 
         public string GetText(string key)

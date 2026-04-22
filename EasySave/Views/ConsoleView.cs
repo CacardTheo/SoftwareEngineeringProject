@@ -36,7 +36,6 @@ public class ConsoleView
     private void HandleUserInput()
     {
         string choice = Console.ReadLine() ?? "";
-        Console.WriteLine(choice);
         switch (choice)
         {
             case "1": // Change language
