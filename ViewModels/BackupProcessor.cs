@@ -28,14 +28,17 @@ public class BackupProcessor
                 throw new ArgumentException($"Unknown backup type: {job.Type}");
         }
 
-        // State: Started
+        // State: Inactive
         stateManager.UpdateJobState(new StateEntry
         {
-            JobName = job.Name,
-            Status = BackupStatus.Started,
-            CurrentSourceFile = job.SourceDir,
-            CurrentTargetFile = job.TargetDir,
-            Progress = 0,
+            Name = job.Name,
+            SourceFilePath = job.SourceDir,
+            TargetFilePath = job.TargetDir,
+            State = BackupStatus.Inactive,
+            TotalFilesToCopy = 0,
+            TotalFilesSize = 0,
+            NbFilesLeftToDo = 0,
+            Progression = 0,
             LastRun = DateTime.Now
         });
 
@@ -44,11 +47,14 @@ public class BackupProcessor
             // State: In Progress
             stateManager.UpdateJobState(new StateEntry
             {
-                JobName = job.Name,
-                Status = BackupStatus.In_Progress,
-                CurrentSourceFile = job.SourceDir,
-                CurrentTargetFile = job.TargetDir,
-                Progress = 0,
+                Name = job.Name,
+                SourceFilePath = job.SourceDir,
+                TargetFilePath = job.TargetDir,
+                State = BackupStatus.In_Progress,
+                TotalFilesToCopy = 0,
+                TotalFilesSize = 0,
+                NbFilesLeftToDo = 0,
+                Progression = 0,
                 LastRun = DateTime.Now
             });
 
@@ -58,11 +64,14 @@ public class BackupProcessor
             // State: Ended
             stateManager.UpdateJobState(new StateEntry
             {
-                JobName = job.Name,
-                Status = BackupStatus.Ended,
-                CurrentSourceFile = job.SourceDir,
-                CurrentTargetFile = job.TargetDir,
-                Progress = 100,
+                Name = job.Name,
+                SourceFilePath = job.SourceDir,
+                TargetFilePath = job.TargetDir,
+                State = BackupStatus.Ended,
+                TotalFilesToCopy = 0,
+                TotalFilesSize = 0,
+                NbFilesLeftToDo = 0,
+                Progression = 0,
                 LastRun = DateTime.Now
             });
         }
@@ -71,11 +80,14 @@ public class BackupProcessor
             // On error, update state accordingly
             stateManager.UpdateJobState(new StateEntry
             {
-                JobName = job.Name,
-                Status = BackupStatus.Error,
-                CurrentSourceFile = job.SourceDir,
-                CurrentTargetFile = job.TargetDir,
-                Progress = 0,
+                Name = job.Name,
+                SourceFilePath = job.SourceDir,
+                TargetFilePath = job.TargetDir,
+                State = BackupStatus.Error,
+                TotalFilesToCopy = 0,
+                TotalFilesSize = 0,
+                NbFilesLeftToDo = 0,
+                Progression = 0,
                 LastRun = DateTime.Now
             });
 

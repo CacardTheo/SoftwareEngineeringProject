@@ -53,7 +53,7 @@ public class StateManager
         bool found = false;
         for (int i = 0; i < allStates.Count; i++)
         {
-            if (allStates[i].JobName == updatedEntry.JobName)
+            if (allStates[i].Name == updatedEntry.Name)
             {
                 allStates[i] = updatedEntry;
                 found = true;

@@ -1,8 +1,7 @@
 public enum BackupStatus
 {
-    Started,
+    Inactive,
     In_Progress,
     Ended,
     Error
-
 }
