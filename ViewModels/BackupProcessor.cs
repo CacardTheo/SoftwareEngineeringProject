@@ -1,15 +1,18 @@
-using SoftwareEngineeringProject;
+using EasyLog;
 
-public class BackupProcessor
+namespace SoftwareEngineeringProject.ViewModels
 {
-    private IBackupStrategy strategy;
-
-    // Use this with the EasyLog dll
-    // private EasyLog logger;
-    private StateManager stateManager;
-
-    public void Execute(BackupJob job)
+    public class BackupProcessor
     {
-        //strategy.Backup(job);
+        // The service from EasyLog.dll used for real-time logging
+        private readonly LogService _logService = new LogService();
+
+        public void Execute(BackupJob job, IBackupStrategy strategy)
+        {
+            // We pass the log service to the strategy.
+            // The strategy will now handle logging each file transfer 
+            // in real-time with specific transfer times and error handling.
+            strategy.Backup(job, _logService);
+        }
     }
 }

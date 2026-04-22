@@ -1,60 +1,58 @@
 using System;
-using System.Collections.Generic;
-using SoftwareEngineeringProject.BusinessLogic;
+using SoftwareEngineeringProject.ViewModels;
 
-public class ConsoleView
+namespace SoftwareEngineeringProject.Views
 {
-    private readonly BackupManager _manager;
-    private readonly CommandParser _parser;
-
-    public ConsoleView()
+    public class ConsoleView
     {
-        _manager = new BackupManager();
-        _parser = new CommandParser();
-    }
-
-    public void Run(string[] args)
-    {
-        while (true)
+        public void ShowMenu()
         {
-            DisplayMenu();
-            HandleUserInput();
-        }
-    }
+            var configManager = new ConfigManager();
+            var jobs = configManager.LoadJobs();
 
-    private void DisplayMenu()
-    {
-        Console.WriteLine("\n--- EasySave Console ---");
-        Console.WriteLine("1. List Jobs");
-        Console.WriteLine("2. Execute Jobs (ex: 1;3 or 1-5)");
-        Console.WriteLine("3. Exit");
-    }
+            while (true)
+            {
+                Console.WriteLine("\n--- EasySave v1.0 ---");
+                Console.WriteLine("1. List jobs");
+                Console.WriteLine("2. Run a job");
+                Console.WriteLine("3. Exit");
+                Console.Write("Choice: ");
 
-    private void HandleUserInput()
-    {
-        string choice = Console.ReadLine() ?? "";
-        switch (choice)
-        {
-            case "1":
-                DisplayJobs();
-                break;
-            case "2":
-                Console.Write("Enter indices: ");
-                var indices = _parser.Parse(Console.ReadLine() ?? "");
-                _manager.ExecuteJob(indices);
-                break;
-            case "3":
-                Environment.Exit(0);
-                break;
-        }
-    }
+                string choice = Console.ReadLine() ?? "";
 
-    private void DisplayJobs()
-    {
-        var jobs = _manager.GetJobs();
-        for (int i = 0; i < jobs.Count; i++)
-        {
-            Console.WriteLine($"{i + 1}. {jobs[i].Name} [{jobs[i].Type}]");
+                switch (choice)
+                {
+                    case "1":
+                        for (int i = 0; i < jobs.Count; i++)
+                        {
+                            Console.WriteLine($"- ID: {i + 1} | Name: {jobs[i].Name} | Type: {jobs[i].Type}");
+                        }
+                        break;
+
+                    case "2":
+                        Console.Write("Enter Job ID: ");
+                        if (int.TryParse(Console.ReadLine(), out int id) && id > 0 && id <= jobs.Count)
+                        {
+                            var job = jobs[id - 1];
+                            var processor = new BackupProcessor();
+
+                            IBackupStrategy strategy = job.Type == BackupType.Full
+                                ? new FullBackupStrategy()
+                                : new DifferentialBackupStrategy();
+
+                            processor.Execute(job, strategy);
+                            Console.WriteLine(">>> Backup successful!");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid ID.");
+                        }
+                        break;
+
+                    case "3":
+                        return;
+                }
+            }
         }
     }
 }
