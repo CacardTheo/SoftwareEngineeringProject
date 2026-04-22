@@ -1,7 +1,11 @@
+using SoftwareEngineeringProject;
+
 public class BackupProcessor
 {
     private IBackupStrategy strategy;
-    private EasyLog logger;
+
+    // Use this with the EasyLog dll
+    // private EasyLog logger;
     private StateManager stateManager;
 
     public void Execute(BackupJob job)

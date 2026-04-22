@@ -1,3 +1,5 @@
+using SoftwareEngineeringProject;
+
 public class DifferentialBackupStrategy : IBackupStrategy
 {
     public void Backup(BackupJob job)
