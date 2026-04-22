@@ -33,9 +33,9 @@ public class BackupProcessor
         // State: Inactive
         stateManager.UpdateJobState(new StateEntry
         {
-            Name = job.Name,
-            SourceFilePath = job.SourceDir,
-            TargetFilePath = job.TargetDir,
+            Name = job.Name ?? "Unnamed Job",
+            SourceFilePath = job.SourceDir ?? "Unknown Source",
+            TargetFilePath = job.TargetDir ?? "Unknown Target",
             State = BackupStatus.Inactive,
             TotalFilesToCopy = 0,
             TotalFilesSize = 0,
@@ -49,9 +49,9 @@ public class BackupProcessor
             // State: In Progress
             stateManager.UpdateJobState(new StateEntry
             {
-                Name = job.Name,
-                SourceFilePath = job.SourceDir,
-                TargetFilePath = job.TargetDir,
+                Name = job.Name ?? "Unnamed Job",
+                SourceFilePath = job.SourceDir ?? "Unknown Source",
+                TargetFilePath = job.TargetDir ?? "Unknown Target",
                 State = BackupStatus.In_Progress,
                 TotalFilesToCopy = 0,
                 TotalFilesSize = 0,
@@ -66,9 +66,9 @@ public class BackupProcessor
             // State: Ended
             stateManager.UpdateJobState(new StateEntry
             {
-                Name = job.Name,
-                SourceFilePath = job.SourceDir,
-                TargetFilePath = job.TargetDir,
+                Name = job.Name ?? "Unnamed Job",
+                SourceFilePath = job.SourceDir ?? "Unknown Source",
+                TargetFilePath = job.TargetDir ?? "Unknown Target",
                 State = BackupStatus.Ended,
                 TotalFilesToCopy = 0,
                 TotalFilesSize = 0,
@@ -77,14 +77,14 @@ public class BackupProcessor
                 LastRun = DateTime.Now
             });
         }
-        catch (Exception ex)
+        catch
         {
             // On error, update state accordingly
             stateManager.UpdateJobState(new StateEntry
             {
-                Name = job.Name,
-                SourceFilePath = job.SourceDir,
-                TargetFilePath = job.TargetDir,
+                Name = job.Name ?? "Unnamed Job",
+                SourceFilePath = job.SourceDir ?? "Unknown Source",
+                TargetFilePath = job.TargetDir ?? "Unknown Target",
                 State = BackupStatus.Error,
                 TotalFilesToCopy = 0,
                 TotalFilesSize = 0,
