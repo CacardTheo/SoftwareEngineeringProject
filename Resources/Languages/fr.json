@@ -1,0 +1,8 @@
+{
+  "Menu_Title": "--- EASY SAVE VERSION 1.0 ---",
+  "Menu_Option_Run": "1. Exécuter des travaux de sauvegarde",
+  "Menu_Option_Language": "2. Changer la langue",
+  "Menu_Option_Quit": "Q. Quitter",
+  "Selection_Prompt": "Votre choix : ",
+  "Job_Running": "Exécution de : {0}..."
+}
