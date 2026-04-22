@@ -10,10 +10,10 @@ public class DifferentialBackup : IBackupStrategy
         _languageManager = LanguageManager.GetInstance();
     }
 
-    public void Backup(BackupJob job)
+    public void Backup(BackupJob job, Action<string, string, long> onFileCopied)
     {
         string[] files;
-        // On récupère TOUS les fichiers d'un coup, même dans les sous-dossiers
+        // Get all files in the source directory, including subdirectories
         try
         {
             files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
@@ -25,7 +25,7 @@ public class DifferentialBackup : IBackupStrategy
 
         foreach (string file in files)
         {
-            // Calcul du chemin de destination
+            // Calculate destination path
             string relativePath = Path.GetRelativePath(job.SourceDir, file);
             string destFile = Path.Combine(job.TargetDir, relativePath);
 
@@ -54,7 +54,11 @@ public class DifferentialBackup : IBackupStrategy
                     Directory.CreateDirectory(parentFolder);
                 }
 
+                long fileSize = new FileInfo(file).Length;
                 File.Copy(file, destFile, true);
+
+                // Report progress
+                onFileCopied(file, destFile, fileSize);
             }
         }
     }

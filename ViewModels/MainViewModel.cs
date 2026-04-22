@@ -14,14 +14,16 @@ namespace SoftwareEngineeringProject.ViewModels
         {
             _languageManager = LanguageManager.GetInstance();
             _backupProcessor = new BackupProcessor(new StateManager());
-            BackupJob jobBase = new BackupJob
+            for (int i = 0; i < 5; i++)
             {
-                Name = "Move From D: To E:",
-                SourceDir = "D:\\EasySaveSource",
-                TargetDir = "E:\\EasySaveTarget",
-                Type = BackupType.Full
-            };
-            for (int i = 0; i < 5; i++) _jobs.Add(jobBase);
+                _jobs.Add(new BackupJob
+                {
+                    Name = $"Move From D: To E: {i + 1}",
+                    SourceDir = "D:\\EasySaveSource",
+                    TargetDir = "E:\\EasySaveTarget",
+                    Type = BackupType.Full
+                });
+            }
         }
 
         public string GetText(string key)
@@ -45,8 +47,9 @@ namespace SoftwareEngineeringProject.ViewModels
 
         public bool CreateJob(string name, string source, string target, string type)
         {
-            // Logic to create a backup job based on the provided parameters, we can't have more than 5 jobs
+            // Can't have more than 5 jobs, and name must be unique
             if (_jobs.Count >= 5) return false;
+            if (_jobs.Any(j => j.Name == name)) return false;
             _jobs.Add(new BackupJob
             {
                 Name = name,

@@ -1,6 +1,7 @@
 using SoftwareEngineeringProject;
 
 public interface IBackupStrategy
-    {
-        void Backup(BackupJob job);
-    }
+{
+    // Callback: (sourceFile, destFile, fileSize) called after each file is copied
+    void Backup(BackupJob job, Action<string, string, long> onFileCopied);
+}
