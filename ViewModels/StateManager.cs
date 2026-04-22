@@ -51,7 +51,7 @@ public class StateManager
         List<StateEntry> allStates = LoadStates();
 
         bool found = false;
-        for (int i = 0, i < allStates.Count; i++)
+        for (int i = 0; i < allStates.Count; i++)
         {
             if (allStates[i].JobName == updatedEntry.JobName)
             {
