@@ -1,3 +1,5 @@
+using SoftwareEngineeringProject;
+
 public class FullBackupStrategy : IBackupStrategy
 {
     public void Backup(BackupJob job)
