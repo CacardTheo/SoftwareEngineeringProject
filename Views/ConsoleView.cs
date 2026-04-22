@@ -1,4 +1,4 @@
-using SoftwareEngineeringProject.ViewModels;
+﻿using SoftwareEngineeringProject.ViewModels;
 
 public class ConsoleView
 {
@@ -6,7 +6,7 @@ public class ConsoleView
 
     public ConsoleView()
     {
-        _viewModel = new MainViewModel(); // Le ViewModel créera ses services (Processor, etc.)
+        _viewModel = new MainViewModel(); // Le ViewModel creera ses services (Processor, etc.)
     }
 
     public void Run(string[] args)
@@ -44,7 +44,7 @@ public class ConsoleView
                 _viewModel.ChangeLanguage(lang);
                 break;
 
-            case "2": // Créer un bJOB
+            case "2": // Creer un job
                 Console.Write("Name: ");
                 string name = Console.ReadLine() ?? "";
                 Console.Write("Source Path: ");
@@ -56,30 +56,30 @@ public class ConsoleView
                 _viewModel.CreateJob(name, source, target, type);
                 break;
 
-            case "3": // Supprimer un bJOB
-                DisplayJobs(); // On affiche pour que l'user voie l'ID
+            case "3": // Supprimer un job
+                DisplayJobs();
                 Console.Write("ID to delete: ");
                 if (int.TryParse(Console.ReadLine(), out int idDel))
-                    _viewModel.DeleteJob(idDel - 1); // -1 car l'affichage commence à 1
+                    _viewModel.DeleteJob(idDel - 1);
                 break;
 
-            case "4": // Visualiser les bJOBs
+            case "4": // Visualiser les jobs
                 DisplayJobs();
                 break;
 
-            case "5": // Exécuter UN bJOB
+            case "5": // Executer UN job
                 DisplayJobs();
                 Console.Write("Job ID to run: ");
-                _viewModel.RunJob(Console.ReadLine() ?? ""); 
+                _viewModel.RunJob(Console.ReadLine() ?? "");
                 break;
 
-            case "6": // Exécuter une PARTIE
-                Console.Write(_viewModel.GetText("prompt_indices")); 
-                _viewModel.RunJob(Console.ReadLine() ?? ""); // "1;3" ou "1-3"
+            case "6": // Executer une PARTIE
+                Console.Write(_viewModel.GetText("prompt_indices"));
+                _viewModel.RunJob(Console.ReadLine() ?? "");
                 break;
 
-            case "7": // Exécuter TOUS les bJOBs
-                _viewModel.RunJob("1-5"); 
+            case "7": // Executer TOUS les jobs
+                _viewModel.RunJob("1-5");
                 break;
 
             case "8": // Quitter
@@ -94,7 +94,7 @@ public class ConsoleView
 
     private void DisplayJobs()
     {
-        var jobs = _viewModel.GetJobs(); // Le VM récupère la liste
+        var jobs = _viewModel.GetJobs();
         for (int i = 0; i < jobs.Count; i++)
         {
             Console.WriteLine($"{i + 1}. {jobs[i].Name} [{jobs[i].Type}]");
