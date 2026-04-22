@@ -34,13 +34,13 @@ classDiagram
         +string JobName
         +BackupStatus Status
         +int Progress
-        +long RemainingSize
+        +long SizeTotransfer
         +string CurrentSourceFile
+        +string CurrentTargetFile
         +DateTime LastActionTimestamp
-        +int TotalEligibleFiles
-        +long TotalFileSize
-        +int RemainingFiles
-        +string CurrentDestinationFile
+        +int NumberOfFilesRemaining
+        +long SizeRemaining
+        +DateTime LastRun
     }
 
     %% --- LOGIC & STRATEGY ---
