@@ -21,7 +21,16 @@ namespace SoftwareEngineeringProject.ViewModels
                 TargetDir = "E:\\EasySaveTarget",
                 Type = BackupType.Full
             };
-            for (int i = 0; i < 5; i++) _jobs.Add(jobBase);
+            for (int i = 0; i < 5; i++)
+            {
+                _jobs.Add(new BackupJob
+                {
+                    Name = $"Move From D: To E: {i + 1}",
+                    SourceDir = "D:\\EasySaveSource",
+                    TargetDir = "E:\\EasySaveTarget",
+                    Type = BackupType.Full
+                });
+            }
         }
 
         public string GetText(string key)
@@ -46,7 +55,7 @@ namespace SoftwareEngineeringProject.ViewModels
         public bool CreateJob(string name, string source, string target, string type)
         {
             // Logic to create a backup job based on the provided parameters, we can't have more than 5 jobs
-            if (_jobs.Count >= 5) return false;
+            if (_jobs.Count >= 5 || _jobs.Any(j => j.Name == name)) return false;
             _jobs.Add(new BackupJob
             {
                 Name = name,

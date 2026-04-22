@@ -15,7 +15,7 @@ namespace SoftwareEngineeringProject
         {
             _languageManager = LanguageManager.GetInstance();
         }
-        public void Backup(BackupJob job, LogService logService)
+        public void Backup(BackupJob job, LogService logService, Action<string, string, long> onFileCopied)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -62,6 +62,7 @@ namespace SoftwareEngineeringProject
                         sw.Stop();
 
                         Console.WriteLine($"[SUCCESS] Copied: {fileInfo.Name}");
+                        onFileCopied(fileInfo.Name, targetPath, fileInfo.Length);
 
                         logService.Save(new LogEntry
                         {

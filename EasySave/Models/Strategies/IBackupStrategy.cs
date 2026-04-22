@@ -9,6 +9,7 @@ namespace SoftwareEngineeringProject
         /// </summary>
         /// <param name="job">The backup job details.</param>
         /// <param name="logService">The logging service from EasyLog.dll.</param>
-        void Backup(BackupJob job, LogService logService);
+        /// <param name="onFileCopied">The callback action to invoke when a file is copied.</param>
+        void Backup(BackupJob job, LogService logService, Action<string, string, long> onFileCopied);
     }
 }

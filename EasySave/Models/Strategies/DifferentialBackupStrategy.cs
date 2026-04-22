@@ -15,7 +15,7 @@ namespace SoftwareEngineeringProject
         {
             _languageManager = LanguageManager.GetInstance();
         }
-        public void Backup(BackupJob job, LogService logService)
+        public void Backup(BackupJob job, LogService logService, Action<string, string, long> onFileCopied)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -61,6 +61,8 @@ namespace SoftwareEngineeringProject
 
                         File.Copy(file.FullName, targetFilePath, true);
                         stopwatch.Stop();
+
+                        onFileCopied(file.Name, targetFilePath, file.Length);
 
                         // Real-time logging for each copied file
                         logService.Save(new LogEntry

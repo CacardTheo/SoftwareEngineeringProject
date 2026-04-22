@@ -1,6 +1,7 @@
 using SoftwareEngineeringProject;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 public class StateManager
 {
@@ -23,7 +24,8 @@ public class StateManager
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            Converters = { new JsonStringEnumConverter()}
         };
     }
 
@@ -42,7 +44,7 @@ public class StateManager
 
         string jsonString = File.ReadAllText(_stateFilesPath);
 
-        List<StateEntry> states = JsonSerializer.Deserialize<List<StateEntry>>(jsonString) ?? new List<StateEntry>(); 
+        List<StateEntry> states = JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
         return states;
     }
 

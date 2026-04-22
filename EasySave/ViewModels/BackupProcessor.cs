@@ -30,6 +30,23 @@ public class BackupProcessor
                 throw new ArgumentException($"Unknown backup type: {job.Type}");
         }
 
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+        }
+        catch
+        {
+            files = Array.Empty<string>();
+        }
+
+        int totalFiles = files.Length;
+        long totalSize = 0;
+        foreach (string file in files)
+        {
+            totalSize += new FileInfo(file).Length;
+        }
+
         // State: Inactive
         stateManager.UpdateJobState(new StateEntry
         {
@@ -37,9 +54,9 @@ public class BackupProcessor
             SourceFilePath = job.SourceDir ?? "Unknown Source",
             TargetFilePath = job.TargetDir ?? "Unknown Target",
             State = BackupStatus.Inactive,
-            TotalFilesToCopy = 0,
-            TotalFilesSize = 0,
-            NbFilesLeftToDo = 0,
+            TotalFilesToCopy = totalFiles,
+            TotalFilesSize = totalSize,
+            NbFilesLeftToDo = totalFiles,
             Progression = 0,
             LastRun = DateTime.Now
         });
@@ -47,36 +64,44 @@ public class BackupProcessor
         try
         {
             // State: In Progress
-            stateManager.UpdateJobState(new StateEntry
+            // Execute backup strategy with progress callback
+            long bytesCopied = 0;
+            int filesCopied = 0;
+
+            strategy.Backup(job, _logService, (sourceFile, destFile, fileSize)  =>
             {
-                Name = job.Name ?? "Unnamed Job",
-                SourceFilePath = job.SourceDir ?? "Unknown Source",
-                TargetFilePath = job.TargetDir ?? "Unknown Target",
-                State = BackupStatus.In_Progress,
-                TotalFilesToCopy = 0,
-                TotalFilesSize = 0,
-                NbFilesLeftToDo = 0,
-                Progression = 0,
-                LastRun = DateTime.Now
+                filesCopied++;
+                bytesCopied += fileSize;
+                int progression = totalSize > 0 ? (int)((bytesCopied * 100) / totalSize) : 0;
+                stateManager.UpdateJobState(new StateEntry
+                {
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = job.SourceDir ?? "Unknown Source",
+                    TargetFilePath = job.TargetDir ?? "Unknown Target",
+                    State = BackupStatus.In_Progress,
+                    TotalFilesToCopy = totalFiles,
+                    TotalFilesSize = totalSize,
+                    NbFilesLeftToDo = totalFiles,
+                    Progression = progression,
+                    LastRun = DateTime.Now
+                });
             });
 
-            // Execute backup strategy
-            strategy.Backup(job, _logService);
 
-            // State: Ended
-            stateManager.UpdateJobState(new StateEntry
-            {
-                Name = job.Name ?? "Unnamed Job",
-                SourceFilePath = job.SourceDir ?? "Unknown Source",
-                TargetFilePath = job.TargetDir ?? "Unknown Target",
-                State = BackupStatus.Ended,
-                TotalFilesToCopy = 0,
-                TotalFilesSize = 0,
-                NbFilesLeftToDo = 0,
-                Progression = 0,
-                LastRun = DateTime.Now
-            });
-        }
+                // State: Ended
+                stateManager.UpdateJobState(new StateEntry
+                {
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = job.SourceDir ?? "Unknown Source",
+                    TargetFilePath = job.TargetDir ?? "Unknown Target",
+                    State = BackupStatus.Ended,
+                    TotalFilesToCopy = totalFiles,
+                    TotalFilesSize = totalSize,
+                    NbFilesLeftToDo = 0,
+                    Progression = 100,
+                    LastRun = DateTime.Now
+                });
+            }
         catch
         {
             // On error, update state accordingly
