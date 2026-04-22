@@ -1,15 +1,17 @@
+using System; 
 
 namespace SoftwareEngineeringProject
 {
     public class StateEntry
     {
-        public string JobName { get; set; }
-        public BackupStatus Status { get; set; }
-        public int Progress { get; set; }
-        public long SizeToTransfer { get; set; }
-        public string CurrentSourceFile { get; set; }
-        public string CurrentTargetFile { get; set; }
-        public int NumberOfFilesRemaining { get; set; }
+        public string Name { get; set; }
+        public BackupStatus State { get; set; }
+        public int Progression { get; set; }
+        public long TotalFilesSize { get; set; }
+        public int TotalFilesToCopy { get; set; }
+        public string SourceFilePath { get; set; }
+        public string TargetFilePath { get; set; }
+        public int NbFilesLeftToDo { get; set; }
         public long SizeRemaining { get; set; }
         public DateTime LastRun { get; set; }
     }

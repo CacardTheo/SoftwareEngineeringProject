@@ -2,37 +2,55 @@ using System;
 using System.IO;
 using System.Diagnostics;
 using EasyLog;
+using SoftwareEngineeringProject;
+using SoftwareEngineeringProject.ViewModels;
 
 namespace SoftwareEngineeringProject
 {
     public class FullBackupStrategy : IBackupStrategy
     {
+        private readonly LanguageManager _languageManager;
+
+        public FullBackupStrategy()
+        {
+            _languageManager = LanguageManager.GetInstance();
+        }
         public void Backup(BackupJob job, LogService logService)
         {
-            if (string.IsNullOrEmpty(job.SourceDirectory) || string.IsNullOrEmpty(job.TargetDirectory))
+            if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
                 Console.WriteLine("[ERROR] Missing paths in BackupJob.");
                 return;
             }
 
-            Console.WriteLine($"[STRATEGY] Checking source: {job.SourceDirectory}");
+            Console.WriteLine($"[STRATEGY] Checking source: {job.SourceDir}");
 
             try
             {
-                if (!Directory.Exists(job.SourceDirectory))
+                if (!Directory.Exists(job.SourceDir))
                 {
                     Console.WriteLine("[ERROR] Source directory does not exist!");
                     return;
                 }
 
                 // Attempt to get files - this is where permission errors usually trigger
-                string[] files = Directory.GetFiles(job.SourceDirectory, "*.*", SearchOption.AllDirectories);
+                string[] files;
+                // On récupère TOUS les fichiers d'un coup, même dans les sous-dossiers
+                try
+                {
+                    files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{_languageManager.GetText("error_finding_files")}{ex.Message}");
+                    return;
+                }
                 Console.WriteLine($"[STRATEGY] Found {files.Length} files to process.");
 
                 foreach (string filePath in files)
                 {
                     FileInfo fileInfo = new FileInfo(filePath);
-                    string targetPath = filePath.Replace(job.SourceDirectory, job.TargetDirectory);
+                    string targetPath = filePath.Replace(job.SourceDir, job.TargetDir);
 
                     Stopwatch sw = Stopwatch.StartNew();
                     try
@@ -74,13 +92,13 @@ namespace SoftwareEngineeringProject
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"[ACCESS DENIED] Permission issue with {job.SourceDirectory}: {ex.Message}");
+                Console.WriteLine($"[ACCESS DENIED] Permission issue with {job.SourceDir}: {ex.Message}");
 
                 // Log the directory-level error
                 logService.Save(new LogEntry
                 {
                     BackupName = job.Name,
-                    SourceFilePath = job.SourceDirectory,
+                    SourceFilePath = job.SourceDir,
                     TargetFilePath = "ACCESS_DENIED",
                     FileSize = 0,
                     FileTransferTimeMs = -1,
