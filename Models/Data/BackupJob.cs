@@ -5,11 +5,6 @@ using System.Text;
 
 namespace SoftwareEngineeringProject
 {
-    public enum BackupType
-    {
-        Full,
-        Differential
-    }
     public class BackupJob
     {
         public string Name { get; set; }
