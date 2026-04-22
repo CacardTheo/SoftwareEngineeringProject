@@ -36,15 +36,16 @@ public class ConsoleView
     private void HandleUserInput()
     {
         string choice = Console.ReadLine() ?? "";
+        Console.WriteLine(choice);
         switch (choice)
         {
-            case "1": // Changer de langue
+            case "1": // Change language
                 Console.Write("Language (en/fr): ");
                 string lang = Console.ReadLine() ?? "en";
                 _viewModel.ChangeLanguage(lang);
                 break;
 
-            case "2": // Creer un job
+            case "2": // Créer un JOB
                 Console.Write("Name: ");
                 string name = Console.ReadLine() ?? "";
                 Console.Write("Source Path: ");
@@ -53,33 +54,37 @@ public class ConsoleView
                 string target = Console.ReadLine() ?? "";
                 Console.Write("Type (Full/Differential): ");
                 string type = Console.ReadLine() ?? "";
-                _viewModel.CreateJob(name, source, target, type);
+                RunMethodResult(_viewModel.CreateJob(name, source, target, type), _viewModel.GetText("job_created_success"), _viewModel.GetText("error_job_creation"));
                 break;
 
             case "3": // Supprimer un job
                 DisplayJobs();
+                bool jobDeleted = false;
                 Console.Write("ID to delete: ");
                 if (int.TryParse(Console.ReadLine(), out int idDel))
-                    _viewModel.DeleteJob(idDel - 1);
+                    jobDeleted = _viewModel.DeleteJob(idDel - 1);
+                RunMethodResult(jobDeleted, _viewModel.GetText("job_deleted_success"), _viewModel.GetText("job_deleted_failure"));
                 break;
 
             case "4": // Visualiser les jobs
                 DisplayJobs();
+                Console.WriteLine(_viewModel.GetText("exit"));
+                Console.ReadLine();
                 break;
 
             case "5": // Executer UN job
                 DisplayJobs();
-                Console.Write("Job ID to run: ");
-                _viewModel.RunJob(Console.ReadLine() ?? "");
+                Console.Write("Job Name to run: ");
+                RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
-            case "6": // Executer une PARTIE
+            case "6": // Exécuter une PARTIE
                 Console.Write(_viewModel.GetText("prompt_indices"));
-                _viewModel.RunJob(Console.ReadLine() ?? "");
+                RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure")); // "1;3" ou "1-3"
                 break;
 
-            case "7": // Executer TOUS les jobs
-                _viewModel.RunJob("1-5");
+            case "7": // Exécuter TOUS les JOBs
+                RunMethodResult(_viewModel.RunJob("1-5"), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
             case "8": // Quitter
@@ -99,5 +104,19 @@ public class ConsoleView
         {
             Console.WriteLine($"{i + 1}. {jobs[i].Name} [{jobs[i].Type}]");
         }
+    }
+
+    public void RunMethodResult(bool success, string successMessage, string failureMessage )
+    {
+        if (success)
+        {
+            Console.WriteLine(successMessage);
+        }
+        else
+        {
+            Console.WriteLine(failureMessage);
+        }
+        Console.WriteLine(_viewModel.GetText("exit"));
+        Console.ReadLine();
     }
 }

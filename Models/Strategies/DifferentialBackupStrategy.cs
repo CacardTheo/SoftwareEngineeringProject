@@ -1,11 +1,27 @@
 using SoftwareEngineeringProject;
+using SoftwareEngineeringProject.ViewModels;
 
 public class DifferentialBackup : IBackupStrategy
 {
+    private readonly LanguageManager _languageManager;
+
+    public DifferentialBackup()
+    {
+        _languageManager = LanguageManager.GetInstance();
+    }
+
     public void Backup(BackupJob job)
     {
+        string[] files;
         // On récupère TOUS les fichiers d'un coup, même dans les sous-dossiers
-        string[] files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+        try
+        {
+            files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+        } catch (Exception ex)
+        {
+            Console.WriteLine($"{_languageManager.GetText("error_finding_files")}{ex.Message}");
+            return;
+        }
 
         foreach (string file in files)
         {
@@ -39,7 +55,6 @@ public class DifferentialBackup : IBackupStrategy
                 }
 
                 File.Copy(file, destFile, true);
-                Console.WriteLine("Differential update: " + relativePath);
             }
         }
     }

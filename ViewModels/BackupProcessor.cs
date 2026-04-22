@@ -5,7 +5,7 @@ public class BackupProcessor
     private IBackupStrategy strategy;
 
     // Uses EasyLog to log errors and info
-    private EasyLog logger;
+    // private EasyLog logger;
     private StateManager stateManager;
 
     public BackupProcessor(StateManager stateManager)
@@ -29,10 +29,12 @@ public class BackupProcessor
         }
 
         // State: Started
-        stateManager.Update(new StateEntry
+        stateManager.UpdateJobState(new StateEntry
         {
             JobName = job.Name,
             Status = BackupStatus.Started,
+            CurrentSourceFile = job.SourceDir,
+            CurrentTargetFile = job.TargetDir,
             Progress = 0,
             LastRun = DateTime.Now
         });
@@ -40,10 +42,12 @@ public class BackupProcessor
         try
         {
             // State: In Progress
-            stateManager.Update(new StateEntry
+            stateManager.UpdateJobState(new StateEntry
             {
                 JobName = job.Name,
                 Status = BackupStatus.In_Progress,
+                CurrentSourceFile = job.SourceDir,
+                CurrentTargetFile = job.TargetDir,
                 Progress = 0,
                 LastRun = DateTime.Now
             });
@@ -52,10 +56,12 @@ public class BackupProcessor
             strategy.Backup(job);
 
             // State: Ended
-            stateManager.Update(new StateEntry
+            stateManager.UpdateJobState(new StateEntry
             {
                 JobName = job.Name,
                 Status = BackupStatus.Ended,
+                CurrentSourceFile = job.SourceDir,
+                CurrentTargetFile = job.TargetDir,
                 Progress = 100,
                 LastRun = DateTime.Now
             });
@@ -63,10 +69,12 @@ public class BackupProcessor
         catch (Exception ex)
         {
             // On error, update state accordingly
-            stateManager.Update(new StateEntry
+            stateManager.UpdateJobState(new StateEntry
             {
                 JobName = job.Name,
                 Status = BackupStatus.Error,
+                CurrentSourceFile = job.SourceDir,
+                CurrentTargetFile = job.TargetDir,
                 Progress = 0,
                 LastRun = DateTime.Now
             });

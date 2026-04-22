@@ -30,7 +30,7 @@ public class StateManager
     public void SaveState(List<StateEntry> states)
     {
         string jsonString = JsonSerializer.Serialize(states, _jsonOptions);
-        File.WriteAllText(jsonString, _stateFilesPath);
+        File.WriteAllText(_stateFilesPath, jsonString);
     }
 
     public List<StateEntry> LoadStates()
