@@ -9,5 +9,14 @@
   "menu_run_all": "7. Exécuter tous les travaux",
   "menu_exit": "8. Quitter",
   "prompt_choice": "Votre choix : ",
-  "prompt_indices": "Entrez les indices (ex: 1-3 ou 1;3) : "
+  "prompt_indices": "Entrez les indices (ex: 1-3 ou 1;3) : ",
+  "exit": "Appuyez sur Entrée pour continuer...",
+  "error_job_creation": "Échec de la création du job.",
+  "job_deleted_success": "Job supprimé avec succès.",
+  "job_deleted_failure": "Échec de la suppression du job.",
+  "job_execution_success": "Job exécuté avec succès.",
+  "job_execution_failure": "Échec de l'exécution du job.",
+  "job_created_success": "Job créé avec succès.",
+  "error_finding_files": "Une erreur s'est produite lors de la recherche des fichiers : ",
+  "differential_update": "Mise à jour différentielle"
 }

@@ -5,7 +5,7 @@ public class BackupProcessor
     private IBackupStrategy strategy;
 
     // Uses EasyLog to log errors and info
-    private EasyLog logger;
+    // private EasyLog logger;
     private StateManager stateManager;
 
     public BackupProcessor(StateManager stateManager)
