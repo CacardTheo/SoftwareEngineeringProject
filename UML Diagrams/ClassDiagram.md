@@ -18,7 +18,7 @@ classDiagram
         +string Name
         +string SourceDir
         +string TargetDir
-        +string Type
+        +BackupType mode
     }
 
     class LogEntry {
@@ -32,10 +32,15 @@ classDiagram
 
     class StateEntry {
         +string JobName
-        +string Status
+        +BackupStatus Status
         +int Progress
         +long RemainingSize
         +string CurrentSourceFile
+        +DateTime LastActionTimestamp
+        +int TotalEligibleFiles
+        +long TotalFileSize
+        +int RemainingFiles
+        +string CurrentDestinationFile
     }
 
     %% --- LOGIC & STRATEGY ---
@@ -77,6 +82,19 @@ classDiagram
         +GetText(string key) string
     }
 
+    class BackupType {
+        <<Enumeration>>
+        FULL,
+        DIFFERENTIAL
+    }
+
+    class BackupStatus {
+        <<Enumeration>>
+        STARTED,
+        ENDED,
+        ERROR
+    }
+
     %% --- RELATIONS ---
     
     ConsoleView --> MainViewModel : interacts with
@@ -92,3 +110,5 @@ classDiagram
     BackupProcessor ..> BackupJob : reads
     EasyLog ..> LogEntry : writes
     StateManager ..> StateEntry : manages
+    BackupJob ..> BackupType : uses
+    StateEntry ..> BackupStatus : uses
