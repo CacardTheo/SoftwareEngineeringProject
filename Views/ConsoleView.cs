@@ -1,4 +1,4 @@
-﻿using SoftwareEngineeringProject.ViewModels;
+using SoftwareEngineeringProject.ViewModels;
 
 public class ConsoleView
 {
@@ -6,7 +6,7 @@ public class ConsoleView
 
     public ConsoleView()
     {
-        _viewModel = new MainViewModel(); // Le ViewModel creera ses services (Processor, etc.)
+        _viewModel = new MainViewModel(); // The ViewModel will create its services (Processor, etc.)
     }
 
     public void Run(string[] args)
@@ -40,59 +40,59 @@ public class ConsoleView
         switch (choice)
         {
             case "1": // Change language
-                Console.Write("Language (en/fr): ");
+                Console.Write(_viewModel.GetText("prompt_language"));
                 string lang = Console.ReadLine() ?? "en";
                 _viewModel.ChangeLanguage(lang);
                 break;
 
-            case "2": // Créer un JOB
-                Console.Write("Name: ");
+            case "2": // Create a JOB
+                Console.Write(_viewModel.GetText("prompt_name"));
                 string name = Console.ReadLine() ?? "";
-                Console.Write("Source Path: ");
+                Console.Write(_viewModel.GetText("prompt_source"));
                 string source = Console.ReadLine() ?? "";
-                Console.Write("Target Path: ");
+                Console.Write(_viewModel.GetText("prompt_target"));
                 string target = Console.ReadLine() ?? "";
-                Console.Write("Type (Full/Differential): ");
+                Console.Write(_viewModel.GetText("prompt_type"));
                 string type = Console.ReadLine() ?? "";
                 RunMethodResult(_viewModel.CreateJob(name, source, target, type), _viewModel.GetText("job_created_success"), _viewModel.GetText("error_job_creation"));
                 break;
 
-            case "3": // Supprimer un job
+            case "3": // Delete a job
                 DisplayJobs();
                 bool jobDeleted = false;
-                Console.Write("ID to delete: ");
+                Console.Write(_viewModel.GetText("prompt_id_delete"));
                 if (int.TryParse(Console.ReadLine(), out int idDel))
                     jobDeleted = _viewModel.DeleteJob(idDel - 1);
                 RunMethodResult(jobDeleted, _viewModel.GetText("job_deleted_success"), _viewModel.GetText("job_deleted_failure"));
                 break;
 
-            case "4": // Visualiser les jobs
+            case "4": // View jobs
                 DisplayJobs();
                 Console.WriteLine(_viewModel.GetText("exit"));
                 Console.ReadLine();
                 break;
 
-            case "5": // Executer UN job
+            case "5": // Run ONE job
                 DisplayJobs();
-                Console.Write("Job Name to run: ");
+                Console.Write(_viewModel.GetText("prompt_job_id"));
                 RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
-            case "6": // Exécuter une PARTIE
+            case "6": // Run a SUBSET
                 Console.Write(_viewModel.GetText("prompt_indices"));
-                RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure")); // "1;3" ou "1-3"
+                RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure")); // "1;3" or "1-3"
                 break;
 
-            case "7": // Exécuter TOUS les JOBs
+            case "7": // Run ALL JOBs
                 RunMethodResult(_viewModel.RunJob("1-5"), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
-            case "8": // Quitter
+            case "8": // Exit
                 Environment.Exit(0);
                 break;
 
             default:
-                Console.WriteLine("Invalid choice.");
+                Console.WriteLine(_viewModel.GetText("invalid_choice"));
                 break;
         }
     }
