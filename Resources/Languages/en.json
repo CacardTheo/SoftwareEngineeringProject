@@ -16,7 +16,7 @@
   "prompt_target": "Target Path: ",
   "prompt_type": "Type (Full/Differential): ",
   "prompt_id_delete": "ID to delete: ",
-  "prompt_job_name": "Job Name to run: ",
+  "prompt_job_id": "Job Number to run: ",
   "exit": "Press Enter to continue...",
   "invalid_choice": "Invalid choice.",
   "error_job_creation": "Failed to create job.",

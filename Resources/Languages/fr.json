@@ -16,7 +16,7 @@
   "prompt_target": "Chemin cible : ",
   "prompt_type": "Type (Full/Differential) : ",
   "prompt_id_delete": "ID à supprimer : ",
-  "prompt_job_name": "Nom du travail à exécuter : ",
+  "prompt_job_id": "Numéro du travail à exécuter : ",
   "exit": "Appuyez sur Entrée pour continuer...",
   "invalid_choice": "Choix invalide.",
   "error_job_creation": "Échec de la création du job.",

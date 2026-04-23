@@ -73,7 +73,7 @@ public class ConsoleView
 
             case "5": // Run ONE job
                 DisplayJobs();
-                Console.Write(_viewModel.GetText("prompt_job_name"));
+                Console.Write(_viewModel.GetText("prompt_job_id"));
                 RunMethodResult(_viewModel.RunJob(Console.ReadLine() ?? ""), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
