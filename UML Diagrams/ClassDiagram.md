@@ -2,15 +2,24 @@ classDiagram
     %% --- PRESENTATION ---
     class ConsoleView {
         -MainViewModel viewModel
-        +ShowMenu() void
-        +ReadInput() string
+        +Run(string[]: args) void
+        -DisplayMenu() void
+        -HandleUserInput() string
+        -DisplayJobs() void
+        -RunMethodResult(bool success, string successMessage, string failureMessage) void
     }
 
     class MainViewModel {
-        -BackupProcessor processor
-        -LanguageManager langManager
-        +RunJob(int id) void
+        -BackupProcessor _backupProcessor
+        -LanguageManager _langManager
+        -List<BackupJob> _jobs
+        +GetText(string key) string
         +ChangeLanguage(string lang) void
+        +CreateJob(string name, string source, string target, string type) bool
+        +DeleteJob(string input) bool
+        +RunJob(int id) bool
+        +GetJobs() List<BackupJobs>
+        -ParseIndices(string input, int maxcount) List<int>
     }
 
     %% --- MODELS (Data Structures) ---
@@ -18,27 +27,27 @@ classDiagram
         +string Name
         +string SourceDir
         +string TargetDir
-        +BackupType mode
+        +BackupType Type
     }
 
     class LogEntry {
-        +DateTime Timestamp
-        +string BackupName
-        +string SourcePath
-        +string DestinationPath
+        +string Timestamp
+        +string? BackupName
+        +string? SourceFilePath
+        +string? TargetFilePath
         +long FileSize
-        +int TransferTime
+        +long FileTransferTimeMs
     }
 
     class StateEntry {
-        +string JobName
-        +BackupStatus Status
-        +int Progress
-        +long SizeTotransfer
-        +string CurrentSourceFile
-        +string CurrentTargetFile
-        +DateTime LastActionTimestamp
-        +int NumberOfFilesRemaining
+        +string Name
+        +BackupStatus State
+        +int Progression
+        +long TotalFilesSize
+        +int TotalFilesToCopy
+        +string SourceFilePath
+        +string TargetFilePath
+        +int NbFilesLeftToDo
         +long SizeRemaining
         +DateTime LastRun
     }
@@ -46,69 +55,80 @@ classDiagram
     %% --- LOGIC & STRATEGY ---
     class BackupProcessor {
         -IBackupStrategy strategy
-        -EasyLog logger
         -StateManager stateManager
+        -LogService _logService
         +Execute(BackupJob job) void
     }
 
     class IBackupStrategy {
         <<interface>>
-        +Backup(BackupJob job) void
+        +Backup(BackupJob jobm LogService logService, Action<string, string, long> onFileCopied) void
     }
 
-    class FullBackup {
-        +Backup(BackupJob job) void
+    class FullBackupStrategy {
+        -LanguageManager _languageManager
+        +Backup(BackupJob jobm LogService logService, Action<string, string, long> onFileCopied) void
     }
 
-    class DifferentialBackup {
-        +Backup(BackupJob job) void
+    class DifferentialBackupStrategy {
+        -LanguageManager _languageManager
+        +Backup(BackupJob jobm LogService logService, Action<string, string, long> onFileCopied) void
     }
 
     %% --- SERVICES (Handlers) ---
-    class EasyLog {
+    class LogService {
+        -string _logFolder
         +Save(LogEntry entry) void
     }
 
     class StateManager {
-        +Update(StateEntry state) void
+        -string _stateFilesPath
+        -JsonSerializerOptions _jsonOptions
+        +SaveState(List<StateEntry> states) void
+        +LoadStates() List<StateEntry> 
+        +UpdateJobState(StateEntry state) void
+        +ClearState() void
     }
 
     class LanguageManager {
         <<Singleton>>
         -static LanguageManager _instance
-        -string currentLanguage
+        -Dictionary<string, string> _translations
+        -string _currentLanguage
         +static GetInstance() LanguageManager
         +SetLanguage(string lang) void
+        -LoadTranslations() void
         +GetText(string key) string
     }
 
     class BackupType {
         <<Enumeration>>
-        FULL,
-        DIFFERENTIAL
+        Full,
+        Differential
     }
 
     class BackupStatus {
         <<Enumeration>>
-        STARTED,
-        ENDED,
-        ERROR
+        Inactive,
+        In_Progress,
+        Ended,
+        Error
     }
 
-    %% --- RELATIONS ---
+%% --- RELATIONS ---
+    ConsoleView "1" --* "1" MainViewModel : interacts with
+    MainViewModel "1" --* "1" BackupProcessor : controls
+    MainViewModel "1" --* "1" LanguageManager : uses
+    MainViewModel "1" --o "*" BackupJob : manages
     
-    ConsoleView --> MainViewModel : interacts with
-    MainViewModel --> BackupProcessor : controls
-    MainViewModel --> LanguageManager : uses
+    IBackupStrategy <|.. FullBackupStrategy : implements
+    IBackupStrategy <|.. DifferentialBackupStrategy : implements
+    BackupProcessor "1" --* "1" IBackupStrategy : uses
+    BackupProcessor "1" --* "1" LogService : uses
+    BackupProcessor "1" --* "1" StateManager : updates
     
-    IBackupStrategy <|.. FullBackup : implements
-    IBackupStrategy <|.. DifferentialBackup : implements
-    BackupProcessor --> IBackupStrategy : uses
-    BackupProcessor --> EasyLog : calls
-    BackupProcessor --> StateManager : calls
-    
-    BackupProcessor ..> BackupJob : reads
-    EasyLog ..> LogEntry : writes
-    StateManager ..> StateEntry : manages
-    BackupJob ..> BackupType : uses
-    StateEntry ..> BackupStatus : uses
+    BackupProcessor ..> BackupJob : processes
+    LogService ..> LogEntry : creates
+    StateManager ..> StateEntry : persists
+    BackupJob ..> BackupType : typed by
+    StateEntry ..> BackupStatus : reflects
