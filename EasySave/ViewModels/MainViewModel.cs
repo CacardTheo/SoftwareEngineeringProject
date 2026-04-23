@@ -18,7 +18,7 @@ namespace SoftwareEngineeringProject.ViewModels
 
         public string GetText(string key)
         {
-            // On utilise l'instance unique récupérée au début
+            // Use the singleton instance retrieved at initialization
             return _languageManager.GetText(key);
         }
 

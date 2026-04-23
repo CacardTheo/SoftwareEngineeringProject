@@ -26,9 +26,9 @@ namespace SoftwareEngineeringProject.ViewModels
         {
             try
             {
-                // On récupère le chemin où l'application s'exécute réellement
+                // Get the path where the application is actually running
                 string baseDir = AppContext.BaseDirectory;
-                string path = Path.Combine(baseDir, "Resources", $"{_currentLanguage}.json");
+                string path = Path.Combine(baseDir, "Resources", "Languages", $"{_currentLanguage}.json");
 
                 if (File.Exists(path))
                 {
@@ -37,8 +37,8 @@ namespace SoftwareEngineeringProject.ViewModels
                 }
                 else
                 {
-                    // Si on ne trouve toujours pas, on essaie le chemin relatif classique
-                    string fallbackPath = Path.Combine("Resources", $"{_currentLanguage}.json");
+                    // If still not found, try the classic relative path
+                    string fallbackPath = Path.Combine("Resources", "Languages", $"{_currentLanguage}.json");
                     if (File.Exists(fallbackPath))
                     {
                         _translations = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(fallbackPath));
