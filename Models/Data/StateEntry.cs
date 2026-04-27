@@ -1,6 +1,6 @@
 using System; 
 
-namespace SoftwareEngineeringProject
+namespace EasySaveWpf
 {
     public class StateEntry
     {

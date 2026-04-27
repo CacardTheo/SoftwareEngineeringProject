@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Diagnostics;
 using EasyLog;
-using SoftwareEngineeringProject;
-using SoftwareEngineeringProject.ViewModels;
+using EasySaveWpf;
+using EasySaveWpf.ViewModels;
 
-namespace SoftwareEngineeringProject
+namespace EasySaveWpf
 {
     public class DifferentialBackupStrategy : IBackupStrategy
     {

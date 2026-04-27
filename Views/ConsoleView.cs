@@ -1,4 +1,4 @@
-using SoftwareEngineeringProject.ViewModels;
+using EasySaveWpf.ViewModels;
 
 public class ConsoleView
 {

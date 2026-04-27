@@ -1,6 +1,6 @@
 using EasyLog;
 
-namespace SoftwareEngineeringProject
+namespace EasySaveWpf
 {
     public interface IBackupStrategy
     {

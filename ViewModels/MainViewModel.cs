@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Authentication.ExtendedProtection;
 
-namespace SoftwareEngineeringProject.ViewModels
+namespace EasySaveWpf.ViewModels
 {
     public class MainViewModel
     {
