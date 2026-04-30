@@ -1,16 +1,12 @@
-﻿<Window x:Class="EasySaveWpf.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:EasySaveWpf"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <StackPanel Grid.Row="0" Orientation="Vertical" Background="#2D2D30">
-            <Button Content="{Binding MenuCreateText}" Command="{Binding CreateJobCommand}" Margin="5"/>
-            <Button Content="{Binding MenuRunAllText}" Command="{Binding RunAllJobsCommand}" Margin="5"/>
-            <ComboBox SelectedValue="{Binding CurrentLanguage}" ItemsSource="{Binding AvailableLanguages}" Margin="5"/>
-        </StackPanel>
-    </Grid>
+        x:Class="EasySaveWpf.Views.MainWindow"
+        Width="800" Height="450"
+        Title="EasySave">
+  <StackPanel Orientation="Vertical" Background="#2D2D30">
+    <Button Content="{Binding MenuCreateText}" Command="{Binding CreateJobCommand}" />
+    <Button Content="{Binding MenuRunAllText}" Command="{Binding RunAllJobsCommand}" />
+    <ComboBox SelectedItem="{Binding CurrentLanguage}"
+              ItemsSource="{Binding AvailableLanguages}" />
+  </StackPanel>
 </Window>
