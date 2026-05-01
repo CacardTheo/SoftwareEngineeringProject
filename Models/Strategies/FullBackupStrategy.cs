@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Diagnostics;
-using EasyLog;
 using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
@@ -15,15 +14,14 @@ namespace EasySaveWpf
         {
             _languageManager = LanguageManager.GetInstance();
         }
-        public void Backup(BackupJob job, LogService logService, Action<string, string, long> onFileCopied)
+
+        public void Backup(BackupJob job, BackupExecutionContext context)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
                 Console.WriteLine("[ERROR] Missing paths in BackupJob.");
                 return;
             }
-
-            Console.WriteLine($"[STRATEGY] Checking source: {job.SourceDir}");
 
             try
             {
@@ -33,9 +31,7 @@ namespace EasySaveWpf
                     return;
                 }
 
-                // Attempt to get files - this is where permission errors usually trigger
                 string[] files;
-                // On récupère TOUS les fichiers d'un coup, même dans les sous-dossiers
                 try
                 {
                     files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
@@ -45,10 +41,12 @@ namespace EasySaveWpf
                     Console.WriteLine($"{_languageManager.GetText("error_finding_files")}{ex.Message}");
                     return;
                 }
-                Console.WriteLine($"[STRATEGY] Found {files.Length} files to process.");
 
                 foreach (string filePath in files)
                 {
+                    if (!context.CanCopyNextFile())
+                        throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+
                     FileInfo fileInfo = new FileInfo(filePath);
                     string targetPath = filePath.Replace(job.SourceDir, job.TargetDir);
 
@@ -61,55 +59,77 @@ namespace EasySaveWpf
                         File.Copy(filePath, targetPath, true);
                         sw.Stop();
 
-                        Console.WriteLine($"[SUCCESS] Copied: {fileInfo.Name}");
-                        onFileCopied(fileInfo.Name, targetPath, fileInfo.Length);
+                        long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, context);
+                        context.OnFileCopied(filePath, targetPath, fileInfo.Length);
 
-                        logService.Save(new LogEntry
+                        context.LogManager.Save(new AppLogEntry
                         {
-                            BackupName = job.Name,
+                            BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
                             TargetFilePath = targetPath,
                             FileSize = fileInfo.Length,
                             FileTransferTimeMs = sw.ElapsedMilliseconds,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                        });
+                            EncryptionTimeMs = encryptionTime,
+                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Event = "FileCopied"
+                        }, context.LogFormat);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
                         sw.Stop();
                         Console.WriteLine($"[ERROR] Failed to copy {fileInfo.Name}: {ex.Message}");
 
-                        logService.Save(new LogEntry
+                        context.LogManager.Save(new AppLogEntry
                         {
-                            BackupName = job.Name,
+                            BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
                             TargetFilePath = "ERROR",
                             FileSize = fileInfo.Length,
-                            FileTransferTimeMs = -1, // Requirement: negative if error
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                        });
+                            FileTransferTimeMs = -1,
+                            EncryptionTimeMs = 0,
+                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Event = "CopyError"
+                        }, context.LogFormat);
                     }
                 }
             }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"[ACCESS DENIED] Permission issue with {job.SourceDir}: {ex.Message}");
-
-                // Log the directory-level error
-                logService.Save(new LogEntry
+                Console.WriteLine($"[ACCESS DENIED] {ex.Message}");
+                context.LogManager.Save(new AppLogEntry
                 {
-                    BackupName = job.Name,
-                    SourceFilePath = job.SourceDir,
+                    BackupName = job.Name ?? string.Empty,
+                    SourceFilePath = job.SourceDir ?? string.Empty,
                     TargetFilePath = "ACCESS_DENIED",
                     FileSize = 0,
                     FileTransferTimeMs = -1,
-                    Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                });
+                    EncryptionTimeMs = 0,
+                    Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Event = "AccessDenied"
+                }, context.LogFormat);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[STRATEGY ERROR] An unexpected error occurred: {ex.Message}");
+                Console.WriteLine($"[STRATEGY ERROR] {ex.Message}");
             }
+        }
+
+        private static long TryEncrypt(string targetPath, string extension, BackupExecutionContext context)
+        {
+            bool shouldEncrypt = context.Settings.EncryptedExtensions
+                .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
+
+            return shouldEncrypt
+                ? context.CryptoService.Encrypt(targetPath, context.Settings.EncryptionKey)
+                : 0;
         }
     }
 }

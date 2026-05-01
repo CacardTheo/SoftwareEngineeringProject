@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Diagnostics;
-using EasyLog;
 using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
@@ -15,7 +14,8 @@ namespace EasySaveWpf
         {
             _languageManager = LanguageManager.GetInstance();
         }
-        public void Backup(BackupJob job, LogService logService, Action<string, string, long> onFileCopied)
+
+        public void Backup(BackupJob job, BackupExecutionContext context)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -23,16 +23,11 @@ namespace EasySaveWpf
                 return;
             }
 
-            Console.WriteLine($"\n[STRATEGY] Starting Differential Backup for: {job.Name}");
-
             if (!Directory.Exists(job.TargetDir))
-            {
                 Directory.CreateDirectory(job.TargetDir);
-            }
 
             DirectoryInfo sourceInfo = new DirectoryInfo(job.SourceDir);
             FileInfo[] files;
-            // On récupère TOUS les fichiers d'un coup, même dans les sous-dossiers
             try
             {
                 files = sourceInfo.GetFiles("*.*", SearchOption.AllDirectories);
@@ -45,9 +40,12 @@ namespace EasySaveWpf
 
             foreach (FileInfo file in files)
             {
+                if (!context.CanCopyNextFile())
+                    throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+
                 string targetFilePath = file.FullName.Replace(job.SourceDir, job.TargetDir);
 
-                // Logic: Only copy if file is new or modified
+                // Only copy if file is new or modified
                 if (!File.Exists(targetFilePath) || file.LastWriteTime > File.GetLastWriteTime(targetFilePath))
                 {
                     Stopwatch stopwatch = Stopwatch.StartNew();
@@ -55,45 +53,58 @@ namespace EasySaveWpf
                     {
                         string? targetDirectory = Path.GetDirectoryName(targetFilePath);
                         if (targetDirectory != null && !Directory.Exists(targetDirectory))
-                        {
                             Directory.CreateDirectory(targetDirectory);
-                        }
 
                         File.Copy(file.FullName, targetFilePath, true);
                         stopwatch.Stop();
 
-                        onFileCopied(file.Name, targetFilePath, file.Length);
+                        long encryptionTime = TryEncrypt(targetFilePath, file.Extension, context);
+                        context.OnFileCopied(file.FullName, targetFilePath, file.Length);
 
-                        // Real-time logging for each copied file
-                        logService.Save(new LogEntry
+                        context.LogManager.Save(new AppLogEntry
                         {
-                            BackupName = job.Name,
+                            BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
                             TargetFilePath = targetFilePath,
                             FileSize = file.Length,
                             FileTransferTimeMs = stopwatch.ElapsedMilliseconds,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                        });
+                            EncryptionTimeMs = encryptionTime,
+                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Event = "FileCopied"
+                        }, context.LogFormat);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        throw;
                     }
                     catch (Exception)
                     {
                         stopwatch.Stop();
-                        // Log error with -1 as per requirements
-                        logService.Save(new LogEntry
+                        context.LogManager.Save(new AppLogEntry
                         {
-                            BackupName = job.Name,
+                            BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
                             TargetFilePath = targetFilePath,
                             FileSize = file.Length,
                             FileTransferTimeMs = -1,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                        });
+                            EncryptionTimeMs = 0,
+                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Event = "CopyError"
+                        }, context.LogFormat);
                     }
                 }
             }
+        }
 
-            Console.WriteLine("[STRATEGY] Differential backup completed successfully.");
-    
+        private static long TryEncrypt(string targetPath, string extension, BackupExecutionContext context)
+        {
+            bool shouldEncrypt = context.Settings.EncryptedExtensions
+                .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
+
+            return shouldEncrypt
+                ? context.CryptoService.Encrypt(targetPath, context.Settings.EncryptionKey)
+                : 0;
         }
     }
 }
+

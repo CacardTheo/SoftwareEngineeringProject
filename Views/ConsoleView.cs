@@ -1,4 +1,5 @@
 using EasySaveWpf.ViewModels;
+using EasySaveWpf;
 
 public class ConsoleView
 {
@@ -29,6 +30,7 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("menu_run_one"));
         Console.WriteLine(_viewModel.GetText("menu_run_part"));
         Console.WriteLine(_viewModel.GetText("menu_run_all"));
+        Console.WriteLine(_viewModel.GetText("menu_settings"));
         Console.WriteLine(_viewModel.GetText("menu_exit"));
         Console.Write(_viewModel.GetText("prompt_choice"));
     }
@@ -83,7 +85,11 @@ public class ConsoleView
                 break;
 
             case "7": // Run ALL JOBs
-                RunMethodResult(_viewModel.RunJob("1-5"), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
+                RunMethodResult(_viewModel.RunAllJobs(), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
+                break;
+
+            case "9": // Settings
+                ConfigureSettings();
                 break;
 
             case "8": // Exit
@@ -94,6 +100,32 @@ public class ConsoleView
                 Console.WriteLine(_viewModel.GetText("invalid_choice"));
                 break;
         }
+    }
+
+    private void ConfigureSettings()
+    {
+        Console.WriteLine(_viewModel.GetText("settings_title"));
+
+        Console.Write(_viewModel.GetText("prompt_log_format"));
+        string logFormat = (Console.ReadLine() ?? "json").Trim();
+        _viewModel.SetLogFormat(logFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? OutputFormat.Xml
+            : OutputFormat.Json);
+
+        Console.Write(_viewModel.GetText("prompt_state_format"));
+        string stateFormat = (Console.ReadLine() ?? "json").Trim();
+        _viewModel.SetStateFormat(stateFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? OutputFormat.Xml
+            : OutputFormat.Json);
+
+        Console.Write(_viewModel.GetText("prompt_business_processes"));
+        string processInput = Console.ReadLine() ?? string.Empty;
+        var processNames = processInput.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        _viewModel.UpdateBusinessSoftwareProcesses(processNames);
+
+        Console.WriteLine(_viewModel.GetText("settings_saved"));
+        Console.WriteLine(_viewModel.GetText("exit"));
+        Console.ReadLine();
     }
 
     private void DisplayJobs()

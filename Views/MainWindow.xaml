@@ -1,12 +1,127 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:EasySaveWpf.ViewModels"
         x:Class="EasySaveWpf.Views.MainWindow"
-        Width="800" Height="450"
-        Title="EasySave">
-  <StackPanel Orientation="Vertical" Background="#2D2D30">
-    <Button Content="{Binding MenuCreateText}" Command="{Binding CreateJobCommand}" />
-    <Button Content="{Binding MenuRunAllText}" Command="{Binding RunAllJobsCommand}" />
-    <ComboBox SelectedItem="{Binding CurrentLanguage}"
-              ItemsSource="{Binding AvailableLanguages}" />
-  </StackPanel>
+        Title="EasySave v2.0"
+        Width="900" Height="600"
+        MinWidth="700" MinHeight="450"
+        Background="#1E1E2E"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <Style Selector="Button.accent">
+      <Setter Property="Background" Value="#4A90D9"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Padding" Value="12,6"/>
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#3A7EC8"/>
+    </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="#4A4A6E"/>
+      <Setter Property="Foreground" Value="#CF6679"/>
+      <Setter Property="Padding" Value="8,4"/>
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#5A5A7E"/>
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+
+    <!-- Top bar -->
+    <Border DockPanel.Dock="Top" Background="#16162A" Padding="20,12">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Grid.Column="0" Text="{Binding LabelTitle}" FontSize="22" FontWeight="Bold"
+                   Foreground="#CDD6F4" VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="1" Margin="0,0,12,0"
+                  ItemsSource="{Binding AvailableLanguages}"
+                  SelectedItem="{Binding SelectedLanguage}"
+                  Width="70" Background="#2A2A3E" Foreground="#CDD6F4"/>
+        <Button Grid.Column="2" Content="{Binding LabelSettings}"
+                Command="{Binding OpenSettingsCommand}"
+                Classes="accent"/>
+      </Grid>
+    </Border>
+
+    <!-- Bottom bar -->
+    <Border DockPanel.Dock="Bottom" Background="#16162A" Padding="20,12">
+      <Grid ColumnDefinitions="Auto,*">
+        <Button Grid.Column="0" Content="{Binding LabelAddJob}"
+                Command="{Binding AddJobCommand}"
+                Classes="accent"
+                Margin="0,0,12,0"/>
+        <Button Grid.Column="1" Content="{Binding LabelRunAll}"
+                Command="{Binding RunAllCommand}"
+                Classes="accent"
+                HorizontalAlignment="Right" Width="140"/>
+      </Grid>
+    </Border>
+
+    <!-- Job list -->
+    <ScrollViewer Padding="20,16">
+      <ItemsControl ItemsSource="{Binding Jobs}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Background="#2A2A3E" CornerRadius="8" Padding="16" Margin="0,0,0,10">
+              <StackPanel>
+
+                <!-- name/badge + run/delete buttons -->
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"
+                               Foreground="#CDD6F4" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Border Background="#313150" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding TypeLabel}" FontSize="11" Foreground="#89B4FA"/>
+                    </Border>
+                  </StackPanel>
+                  <Button Grid.Column="1" Content="&#x25BA;"
+                          Command="{Binding RunCommand}"
+                          IsEnabled="{Binding IsNotRunning}"
+                          Classes="accent"
+                          Width="36" Margin="0,0,6,0"/>
+                  <Button Grid.Column="2" Content="&#x2715;"
+                          Command="{Binding DeleteCommand}"
+                          IsEnabled="{Binding IsNotRunning}"
+                          Classes="danger"
+                          Width="36"/>
+                </Grid>
+
+                <!-- paths -->
+                <StackPanel>
+                  <TextBlock FontSize="12" Foreground="#6C7086" Text="{Binding SourceLineText}"/>
+                  <TextBlock FontSize="12" Foreground="#6C7086" Margin="0,2,0,0" Text="{Binding TargetLineText}"/>
+                </StackPanel>
+
+                <!-- status / progress row — shown once the job has run at least once -->
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0"
+                      IsVisible="{Binding HasBeenRun}">
+                  <TextBlock Grid.Column="0" Text="{Binding StatusText}" FontSize="12"
+                             Foreground="{Binding StatusColor}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <ProgressBar Grid.Column="1" Minimum="0" Maximum="100"
+                               Value="{Binding Progression}"
+                               Height="6"
+                               Foreground="{Binding StatusColor}" Background="#313150"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Progression, StringFormat={}{0}%}"
+                             FontSize="12" Foreground="#6C7086" Margin="8,0,0,0"/>
+                </Grid>
+
+                <TextBlock IsVisible="{Binding HasCurrentFile}"
+                           Text="{Binding CurrentFileLabel}"
+                           Foreground="#9399B2" FontSize="11" Margin="0,6,0,0"
+                           TextWrapping="Wrap"/>
+
+                <!-- blocked warning -->
+                <TextBlock IsVisible="{Binding BlockedByBusinessSoftware}"
+                           Text="{Binding BlockedMessage}"
+                           Foreground="#FF9800" FontSize="12" Margin="0,6,0,0"/>
+
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
 </Window>

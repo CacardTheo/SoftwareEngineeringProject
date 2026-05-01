@@ -1,17 +1,9 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\",
+  "WorkspaceRootPath": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|c:\\users\\theoc\\desktop\\easysavewpf\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|c:\\users\\theoc\\desktop\\easysavewpf\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|solutionrelative:views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|c:\\users\\theoc\\desktop\\easysavewpf\\views\\consoleview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|c:\\users\\hedir\\source\\repos\\softwareengineeringproject\\views\\consoleview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B7A19A35-3F0F-4BA3-8C0F-06FD2F7E4134}|EasySaveWpf.csproj|solutionrelative:views\\consoleview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -22,7 +14,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -30,36 +22,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "MainWindow.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\MainWindow.xaml.cs",
-              "RelativeDocumentMoniker": "Views\\MainWindow.xaml.cs",
-              "ToolTip": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\MainWindow.xaml.cs",
-              "RelativeToolTip": "Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-23T16:47:24.666Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "MainWindow.xaml",
-              "DocumentMoniker": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\MainWindow.xaml",
-              "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
-              "ToolTip": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\MainWindow.xaml",
-              "RelativeToolTip": "Views\\MainWindow.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-04-23T16:47:22.115Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
               "Title": "ConsoleView.cs",
-              "DocumentMoniker": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\ConsoleView.cs",
+              "DocumentMoniker": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\Views\\ConsoleView.cs",
               "RelativeDocumentMoniker": "Views\\ConsoleView.cs",
-              "ToolTip": "C:\\Users\\theoc\\Desktop\\EasySaveWpf\\Views\\ConsoleView.cs",
+              "ToolTip": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\Views\\ConsoleView.cs",
               "RelativeToolTip": "Views\\ConsoleView.cs",
               "ViewState": "AgIAAFMAAAAAAAAAAADwv2UAAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
