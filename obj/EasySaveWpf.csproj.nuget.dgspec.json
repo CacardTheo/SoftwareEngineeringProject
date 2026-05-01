@@ -1,25 +1,27 @@
 {
   "format": 1,
   "restore": {
-    "/Users/theocacard/Desktop/EasySaveProject/SoftwareEngineeringProject/EasySaveWpf.csproj": {}
+    "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\EasySaveWpf.csproj": {}
   },
   "projects": {
-    "/Users/theocacard/Desktop/EasySaveProject/SoftwareEngineeringProject/EasySaveWpf.csproj": {
+    "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\EasySaveWpf.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/theocacard/Desktop/EasySaveProject/SoftwareEngineeringProject/EasySaveWpf.csproj",
+        "projectUniqueName": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\EasySaveWpf.csproj",
         "projectName": "EasySaveWpf",
-        "projectPath": "/Users/theocacard/Desktop/EasySaveProject/SoftwareEngineeringProject/EasySaveWpf.csproj",
-        "packagesPath": "/Users/theocacard/.nuget/packages/",
-        "outputPath": "/Users/theocacard/Desktop/EasySaveProject/SoftwareEngineeringProject/obj/",
+        "projectPath": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\EasySaveWpf.csproj",
+        "packagesPath": "C:\\Users\\hedir\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\hedir\\source\\repos\\SoftwareEngineeringProject\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/theocacard/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\hedir\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -37,26 +39,11 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "10.0.200"
+        }
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "dependencies": {
-            "Avalonia": {
-              "target": "Package",
-              "version": "[11.2.7, )"
-            },
-            "Avalonia.Desktop": {
-              "target": "Package",
-              "version": "[11.2.7, )"
-            },
-            "Avalonia.Themes.Fluent": {
-              "target": "Package",
-              "version": "[11.2.7, )"
-            }
-          },
           "imports": [
             "net461",
             "net462",
@@ -68,26 +55,7 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[9.0.14, 9.0.14]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Host.osx-arm64",
-              "version": "[9.0.14, 9.0.14]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Ref",
-              "version": "[9.0.14, 9.0.14]"
-            }
-          ],
-          "frameworkReferences": {
-            "Microsoft.NETCore.App": {
-              "privateAssets": "all"
-            }
-          },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
