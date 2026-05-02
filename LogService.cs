@@ -1,18 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 
 namespace EasyLog
 {
     public class LogService
     {
         private readonly string _logFolder;
+        private readonly ILogSerializer _serializer;
 
-        public LogService()
+        public LogService(ILogSerializer? serializer = null)
         {
-            // Dynamically find the AppData folder and create an EasySave subfolder
-            // This works on any server/PC regardless of drive letters
+            _serializer = serializer ?? new JsonLogSerializer();
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             _logFolder = Path.Combine(appData, "EasySave", "Logs");
         }
@@ -22,31 +21,21 @@ namespace EasyLog
             try
             {
                 if (!Directory.Exists(_logFolder))
-                {
                     Directory.CreateDirectory(_logFolder);
-                }
 
-                string fileName = $"{DateTime.Now:yyyy-MM-dd}.json";
-                string filePath = Path.Combine(_logFolder, fileName);
+                string filePath = Path.Combine(_logFolder, $"{DateTime.Now:yyyy-MM-dd}.{_serializer.FileExtension}");
 
                 List<LogEntry> logs = new List<LogEntry>();
 
                 if (File.Exists(filePath))
                 {
-                    try
-                    {
-                        string json = File.ReadAllText(filePath);
-                        logs = JsonSerializer.Deserialize<List<LogEntry>>(json) ?? new List<LogEntry>();
-                    }
+                    try { logs = _serializer.Load(filePath); }
                     catch { logs = new List<LogEntry>(); }
                 }
 
                 logs.Add(entry);
+                _serializer.Save(logs, filePath);
 
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(filePath, JsonSerializer.Serialize(logs, options));
-
-                // Feedback for the user to find the file
                 Console.WriteLine($"[LOG] Entry added to: {filePath}");
             }
             catch (Exception ex)
