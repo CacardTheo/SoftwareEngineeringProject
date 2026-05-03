@@ -7,7 +7,8 @@
   "menu_run_one": "5. Execute a Backup Job",
   "menu_run_part": "6. Execute a selection of Jobs (ex: 1;3)",
   "menu_run_all": "7. Execute all Backup Jobs",
-  "menu_exit": "8. Exit",
+  "menu_log_format": "8. Change Log Format",
+  "menu_exit": "9. Exit",
   "prompt_choice": "Your choice: ",
   "prompt_indices": "Enter indices (ex: 1-3 or 1;3): ",
   "prompt_language": "Language (en/fr): ",
@@ -26,5 +27,8 @@
   "job_execution_failure": "Failed to execute job.",
   "job_created_success": "Job created successfully.",
   "error_finding_files": "An error occurred while finding files: ",
-  "differential_update": "Differential update"
+  "differential_update": "Differential update",
+  "prompt_log_format": "Format (JSON/XML): ",
+  "log_format_success": "Log format changed successfully.",
+  "log_format_failure": "Invalid format. Use JSON or XML."
 }

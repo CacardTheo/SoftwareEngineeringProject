@@ -1,19 +1,38 @@
 using System.Collections.Concurrent;
 using System.Security.Authentication.ExtendedProtection;
+using EasyLog;
 
 namespace SoftwareEngineeringProject.ViewModels
 {
     public class MainViewModel
     {
         private readonly LanguageManager _languageManager;
+        private readonly ConfigManager _configManager;
         private BackupProcessor _backupProcessor;
 
         private List<BackupJob> _jobs = new List<BackupJob>();
-        
+
         public MainViewModel()
         {
             _languageManager = LanguageManager.GetInstance();
-            _backupProcessor = new BackupProcessor(new StateManager());
+            _configManager = new ConfigManager();
+            _backupProcessor = new BackupProcessor(new StateManager(), CreateSerializer(_configManager.LoadLogFormat()));
+        }
+
+        private static ILogSerializer CreateSerializer(string format) =>
+            format.Equals("XML", StringComparison.OrdinalIgnoreCase)
+                ? new XmlLogSerializer()
+                : new JsonLogSerializer();
+
+        public bool SetLogFormat(string format)
+        {
+            if (!format.Equals("JSON", StringComparison.OrdinalIgnoreCase) &&
+                !format.Equals("XML", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            _configManager.SaveLogFormat(format.ToUpper());
+            _backupProcessor = new BackupProcessor(new StateManager(), CreateSerializer(format));
+            return true;
         }
 
         public string GetText(string key)

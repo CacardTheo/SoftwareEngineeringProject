@@ -8,6 +8,7 @@ namespace SoftwareEngineeringProject.ViewModels
     public class ConfigManager
     {
         private readonly string _configFilePath;
+        private readonly string _settingsFilePath;
 
         public ConfigManager()
         {
@@ -23,6 +24,7 @@ namespace SoftwareEngineeringProject.ViewModels
             }
 
             _configFilePath = Path.Combine(folderPath, "backup_jobs.json");
+            _settingsFilePath = Path.Combine(folderPath, "settings.json");
         }
 
         public void SaveJobs(List<BackupJob> jobs)
@@ -58,6 +60,35 @@ namespace SoftwareEngineeringProject.ViewModels
             {
                 Console.WriteLine($"Config read error: {ex.Message}");
                 return new List<BackupJob>();
+            }
+        }
+
+        public void SaveLogFormat(string format)
+        {
+            try
+            {
+                var settings = new Dictionary<string, string> { ["logFormat"] = format };
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(_settingsFilePath, JsonSerializer.Serialize(settings, options));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Settings save error: {ex.Message}");
+            }
+        }
+
+        public string LoadLogFormat()
+        {
+            try
+            {
+                if (!File.Exists(_settingsFilePath)) return "JSON";
+                string json = File.ReadAllText(_settingsFilePath);
+                var settings = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                return settings != null && settings.TryGetValue("logFormat", out string? format) ? format : "JSON";
+            }
+            catch
+            {
+                return "JSON";
             }
         }
     }

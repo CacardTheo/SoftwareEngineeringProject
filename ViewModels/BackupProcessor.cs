@@ -8,11 +8,12 @@ public class BackupProcessor
     // private EasyLog logger;
     private StateManager stateManager;
 
-    private readonly LogService _logService = new LogService();
+    private readonly LogService _logService;
 
-    public BackupProcessor(StateManager stateManager)
+    public BackupProcessor(StateManager stateManager, ILogSerializer logSerializer)
     {
         this.stateManager = stateManager;
+        _logService = new LogService(logSerializer);
     }
 
     public void Execute(BackupJob job)

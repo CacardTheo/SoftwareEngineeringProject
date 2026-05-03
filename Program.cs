@@ -1,5 +1,7 @@
 ﻿using System;
 using SoftwareEngineeringProject;
+using SoftwareEngineeringProject.Views;
+
 
 namespace SoftwareEngineeringProject
 {

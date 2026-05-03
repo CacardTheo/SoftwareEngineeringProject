@@ -7,7 +7,8 @@
   "menu_run_one": "5. Exécuter un travail",
   "menu_run_part": "6. Exécuter une partie des backups (ex: 1;3)",
   "menu_run_all": "7. Exécuter tous les travaux",
-  "menu_exit": "8. Quitter",
+  "menu_log_format": "8. Changer le format des logs",
+  "menu_exit": "9. Quitter",
   "prompt_choice": "Votre choix : ",
   "prompt_indices": "Entrez les indices (ex: 1-3 ou 1;3) : ",
   "prompt_language": "Langue (en/fr) : ",
@@ -26,5 +27,8 @@
   "job_execution_failure": "Échec de l'exécution du job.",
   "job_created_success": "Job créé avec succès.",
   "error_finding_files": "Une erreur s'est produite lors de la recherche des fichiers : ",
-  "differential_update": "Mise à jour différentielle"
+  "differential_update": "Mise à jour différentielle",
+  "prompt_log_format": "Format (JSON/XML) : ",
+  "log_format_success": "Format de log changé avec succès.",
+  "log_format_failure": "Format invalide. Utilisez JSON ou XML."
 }

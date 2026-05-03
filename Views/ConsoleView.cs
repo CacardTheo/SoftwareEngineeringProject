@@ -1,5 +1,8 @@
 using SoftwareEngineeringProject.ViewModels;
 
+namespace SoftwareEngineeringProject.Views
+{
+
 public class ConsoleView
 {
     private readonly MainViewModel _viewModel;
@@ -29,6 +32,7 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("menu_run_one"));
         Console.WriteLine(_viewModel.GetText("menu_run_part"));
         Console.WriteLine(_viewModel.GetText("menu_run_all"));
+        Console.WriteLine(_viewModel.GetText("menu_log_format"));
         Console.WriteLine(_viewModel.GetText("menu_exit"));
         Console.Write(_viewModel.GetText("prompt_choice"));
     }
@@ -86,7 +90,13 @@ public class ConsoleView
                 RunMethodResult(_viewModel.RunJob("1-5"), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
-            case "8": // Exit
+            case "8": // Change log format
+                Console.Write(_viewModel.GetText("prompt_log_format"));
+                string format = Console.ReadLine() ?? "";
+                RunMethodResult(_viewModel.SetLogFormat(format), _viewModel.GetText("log_format_success"), _viewModel.GetText("log_format_failure"));
+                break;
+
+            case "9": // Exit
                 Environment.Exit(0);
                 break;
 
@@ -118,4 +128,6 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("exit"));
         Console.ReadLine();
     }
+}
+
 }
