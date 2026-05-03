@@ -16,7 +16,8 @@ namespace SoftwareEngineeringProject.ViewModels
         {
             _languageManager = LanguageManager.GetInstance();
             _configManager = new ConfigManager();
-            _backupProcessor = new BackupProcessor(new StateManager(), CreateSerializer(_configManager.LoadLogFormat()));
+            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
+            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(_configManager.LoadLogFormat()));
         }
 
         private static ILogSerializer CreateSerializer(string format) =>
@@ -31,7 +32,20 @@ namespace SoftwareEngineeringProject.ViewModels
                 return false;
 
             _configManager.SaveLogFormat(format.ToUpper());
-            _backupProcessor = new BackupProcessor(new StateManager(), CreateSerializer(format));
+            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
+            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(format));
+            return true;
+        }
+
+        public bool SetStateFormat(string format)
+        {
+            if (!format.Equals("JSON", StringComparison.OrdinalIgnoreCase) &&
+                !format.Equals("XML", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            _configManager.SaveStateFormat(format.ToUpper());
+            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
+            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(_configManager.LoadLogFormat()));
             return true;
         }
 

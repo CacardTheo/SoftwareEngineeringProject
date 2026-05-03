@@ -26,5 +26,21 @@ EasySave keeps a record of every file it copies. You can find these logs at any 
 Each file is named by the date (e.g., `2026-04-22.json`), making it easy to track your history.
 
 ---
+
+### 4. Choosing File Formats (NEW in V1.1)
+
+**Option 8 - Log Format:**
+Choose how your backup logs are stored:
+- **JSON** - Easy to read, widely supported
+- **XML** - Structured format, better for parsing
+
+**Option 9 - State Format:**
+Choose how job states are tracked:
+- **JSON** - Compact and readable
+- **XML** - Hierarchical structure
+
+Your format choice is saved automatically and used for all future backups.
+
+---
 **Need Help?**
 If you see an "Access Denied" message, try running the application as an **Administrator** or choosing a source folder that isn't owned by Windows.

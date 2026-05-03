@@ -32,8 +32,9 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("menu_run_one"));
         Console.WriteLine(_viewModel.GetText("menu_run_part"));
         Console.WriteLine(_viewModel.GetText("menu_run_all"));
-        Console.WriteLine(_viewModel.GetText("menu_log_format"));
-        Console.WriteLine(_viewModel.GetText("menu_exit"));
+        Console.WriteLine(_viewModel.GetText("menu_log_format") + " (JSON/XML)");
+        Console.WriteLine("9. Change state file format (JSON/XML)");
+        Console.WriteLine("10. Exit");
         Console.Write(_viewModel.GetText("prompt_choice"));
     }
 
@@ -96,7 +97,13 @@ public class ConsoleView
                 RunMethodResult(_viewModel.SetLogFormat(format), _viewModel.GetText("log_format_success"), _viewModel.GetText("log_format_failure"));
                 break;
 
-            case "9": // Exit
+            case "9": // Change state file format
+                Console.Write("Enter state file format (JSON or XML): ");
+                string stateFormat = Console.ReadLine() ?? "";
+                RunMethodResult(_viewModel.SetStateFormat(stateFormat), "State format changed successfully!", "State format change failed!");
+                break;
+
+            case "10": // Exit
                 Environment.Exit(0);
                 break;
 

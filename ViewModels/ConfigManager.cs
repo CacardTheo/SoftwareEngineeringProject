@@ -67,7 +67,8 @@ namespace SoftwareEngineeringProject.ViewModels
         {
             try
             {
-                var settings = new Dictionary<string, string> { ["logFormat"] = format };
+                var settings = LoadSettingsDict();
+                settings["logFormat"] = format;
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 File.WriteAllText(_settingsFilePath, JsonSerializer.Serialize(settings, options));
             }
@@ -90,6 +91,44 @@ namespace SoftwareEngineeringProject.ViewModels
             {
                 return "JSON";
             }
+        }
+
+        public void SaveStateFormat(string format)
+        {
+            try
+            {
+                var settings = LoadSettingsDict();
+                settings["stateFormat"] = format;
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(_settingsFilePath, JsonSerializer.Serialize(settings, options));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Settings save error: {ex.Message}");
+            }
+        }
+
+        public string LoadStateFormat()
+        {
+            try
+            {
+                if (!File.Exists(_settingsFilePath)) return "JSON";
+                string json = File.ReadAllText(_settingsFilePath);
+                var settings = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                return settings != null && settings.TryGetValue("stateFormat", out string? format) ? format : "JSON";
+            }
+            catch
+            {
+                return "JSON";
+            }
+        }
+
+        private Dictionary<string, string> LoadSettingsDict()
+        {
+            if (!File.Exists(_settingsFilePath))
+                return new Dictionary<string, string>();
+            string json = File.ReadAllText(_settingsFilePath);
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
         }
     }
 }
