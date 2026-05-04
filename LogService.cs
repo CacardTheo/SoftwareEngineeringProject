@@ -15,6 +15,10 @@ namespace EasyLog
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             _logFolder = Path.Combine(appData, "EasySave", "Logs");
         }
+        public LogService (LogFormat format) : this(format == LogFormat.Xml ? new XmlLogSerializer() : new JsonLogSerializer())
+        {
+            
+        }
 
         public void Save(LogEntry entry)
         {

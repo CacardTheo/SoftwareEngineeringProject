@@ -18,5 +18,7 @@ namespace EasyLog
 
         // Milliseconds (will be set to -1 in the strategy if an error occurs)
         public long FileTransferTimeMs { get; set; }
+        public long EncrytpionTimeMs { get; set; }
+        public string Event { get; set; } = string.Empty;
     }
 }
