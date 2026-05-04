@@ -119,12 +119,7 @@ public class MainWindowViewModel : ViewModelBase
         AppSettings? updated = await RequestSettings.Invoke(current);
         if (updated == null) return;
 
-        _mainViewModel.SetLogFormat(updated.LogFormat);
-        _mainViewModel.SetStateFormat(updated.StateFormat);
-        _mainViewModel.UpdateBusinessSoftwareProcesses(updated.BusinessSoftwareProcesses);
-        _mainViewModel.UpdateEncryptedExtensions(updated.EncryptedExtensions);
-        _mainViewModel.SetEncryptionKey(updated.EncryptionKey);
-        _mainViewModel.ChangeLanguage(updated.Language);
+        _mainViewModel.ApplySettings(updated);
 
         SelectedLanguage = updated.Language;
         RefreshLabels();

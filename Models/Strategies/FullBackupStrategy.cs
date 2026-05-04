@@ -1,6 +1,5 @@
-using System;
-using System.IO;
 using System.Diagnostics;
+using EasyLog;
 using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
@@ -62,7 +61,7 @@ namespace EasySaveWpf
                         long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, context);
                         context.OnFileCopied(filePath, targetPath, fileInfo.Length);
 
-                        context.LogManager.Save(new AppLogEntry
+                        context.LogService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -70,9 +69,8 @@ namespace EasySaveWpf
                             FileSize = fileInfo.Length,
                             FileTransferTimeMs = sw.ElapsedMilliseconds,
                             EncryptionTimeMs = encryptionTime,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "FileCopied"
-                        }, context.LogFormat);
+                        });
                     }
                     catch (InvalidOperationException)
                     {
@@ -83,7 +81,7 @@ namespace EasySaveWpf
                         sw.Stop();
                         Console.WriteLine($"[ERROR] Failed to copy {fileInfo.Name}: {ex.Message}");
 
-                        context.LogManager.Save(new AppLogEntry
+                        context.LogService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -91,9 +89,8 @@ namespace EasySaveWpf
                             FileSize = fileInfo.Length,
                             FileTransferTimeMs = -1,
                             EncryptionTimeMs = 0,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "CopyError"
-                        }, context.LogFormat);
+                        });
                     }
                 }
             }
@@ -104,7 +101,7 @@ namespace EasySaveWpf
             catch (UnauthorizedAccessException ex)
             {
                 Console.WriteLine($"[ACCESS DENIED] {ex.Message}");
-                context.LogManager.Save(new AppLogEntry
+                context.LogService.Save(new LogEntry
                 {
                     BackupName = job.Name ?? string.Empty,
                     SourceFilePath = job.SourceDir ?? string.Empty,
@@ -112,9 +109,8 @@ namespace EasySaveWpf
                     FileSize = 0,
                     FileTransferTimeMs = -1,
                     EncryptionTimeMs = 0,
-                    Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     Event = "AccessDenied"
-                }, context.LogFormat);
+                });
             }
             catch (Exception ex)
             {

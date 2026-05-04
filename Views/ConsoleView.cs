@@ -106,22 +106,28 @@ public class ConsoleView
     {
         Console.WriteLine(_viewModel.GetText("settings_title"));
 
+        AppSettings settings = _viewModel.GetSettings();
+
         Console.Write(_viewModel.GetText("prompt_log_format"));
         string logFormat = (Console.ReadLine() ?? "json").Trim();
-        _viewModel.SetLogFormat(logFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
-            ? OutputFormat.Xml
-            : OutputFormat.Json);
+        settings.LogFormat = logFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? EasyLog.LogFormat.Xml
+            : EasyLog.LogFormat.Json;
 
         Console.Write(_viewModel.GetText("prompt_state_format"));
         string stateFormat = (Console.ReadLine() ?? "json").Trim();
-        _viewModel.SetStateFormat(stateFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
-            ? OutputFormat.Xml
-            : OutputFormat.Json);
+        settings.StateFormat = stateFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? EasyLog.LogFormat.Xml
+            : EasyLog.LogFormat.Json;
 
         Console.Write(_viewModel.GetText("prompt_business_processes"));
         string processInput = Console.ReadLine() ?? string.Empty;
-        var processNames = processInput.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        _viewModel.UpdateBusinessSoftwareProcesses(processNames);
+        settings.BusinessSoftwareProcesses = processInput
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _viewModel.ApplySettings(settings);
 
         Console.WriteLine(_viewModel.GetText("settings_saved"));
         Console.WriteLine(_viewModel.GetText("exit"));

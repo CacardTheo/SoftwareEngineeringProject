@@ -1,6 +1,5 @@
-using System;
-using System.IO;
 using System.Diagnostics;
+using EasyLog;
 using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
@@ -18,10 +17,7 @@ namespace EasySaveWpf
         public void Backup(BackupJob job, BackupExecutionContext context)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
-            {
-                Console.WriteLine("[STRATEGY] Error: Source or Target directory is missing.");
                 return;
-            }
 
             if (!Directory.Exists(job.TargetDir))
                 Directory.CreateDirectory(job.TargetDir);
@@ -45,7 +41,6 @@ namespace EasySaveWpf
 
                 string targetFilePath = file.FullName.Replace(job.SourceDir, job.TargetDir);
 
-                // Only copy if file is new or modified
                 if (!File.Exists(targetFilePath) || file.LastWriteTime > File.GetLastWriteTime(targetFilePath))
                 {
                     Stopwatch stopwatch = Stopwatch.StartNew();
@@ -61,7 +56,7 @@ namespace EasySaveWpf
                         long encryptionTime = TryEncrypt(targetFilePath, file.Extension, context);
                         context.OnFileCopied(file.FullName, targetFilePath, file.Length);
 
-                        context.LogManager.Save(new AppLogEntry
+                        context.LogService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
@@ -69,9 +64,8 @@ namespace EasySaveWpf
                             FileSize = file.Length,
                             FileTransferTimeMs = stopwatch.ElapsedMilliseconds,
                             EncryptionTimeMs = encryptionTime,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "FileCopied"
-                        }, context.LogFormat);
+                        });
                     }
                     catch (InvalidOperationException)
                     {
@@ -80,7 +74,7 @@ namespace EasySaveWpf
                     catch (Exception)
                     {
                         stopwatch.Stop();
-                        context.LogManager.Save(new AppLogEntry
+                        context.LogService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
@@ -88,9 +82,8 @@ namespace EasySaveWpf
                             FileSize = file.Length,
                             FileTransferTimeMs = -1,
                             EncryptionTimeMs = 0,
-                            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "CopyError"
-                        }, context.LogFormat);
+                        });
                     }
                 }
             }
@@ -107,4 +100,3 @@ namespace EasySaveWpf
         }
     }
 }
-
