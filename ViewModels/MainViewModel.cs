@@ -92,6 +92,7 @@ public class MainViewModel : ViewModelBase
 
     private async Task RunCardAsync(BackupJobViewModel card)
     {
+        // Prevent the user from starting the same job multiple times concurrently
         card.IsRunning = true;
         card.Status = BackupStatus.In_Progress;
         card.Progression = 0;
@@ -99,6 +100,7 @@ public class MainViewModel : ViewModelBase
         try
         {
             int index = _jobs.IndexOf(card.Job);
+            // Execute the heavy backup process in a background thread to keep the UI responsive
             await Task.Run(() => RunJobByIndex(index));
         }
         finally
@@ -118,6 +120,7 @@ public class MainViewModel : ViewModelBase
 
     private async Task RunAllAsync()
     {
+        // Lock all cards to prevent concurrent executions
         foreach (var card in Jobs)
             card.IsRunning = true;
 
@@ -369,12 +372,14 @@ public class MainViewModel : ViewModelBase
         return result;
     }
 
+    // Parses a user input string (e.g. "1-3" or "1;4;5") into a list of 0-based job indices
     private static List<int> ParseIndices(string input, int maxCount)
     {
         var indices = new List<int>();
 
         if (input.Contains('-'))
         {
+            // Handle range format like "1-5"
             string[] parts = input.Split('-');
             if (parts.Length == 2)
             {
@@ -394,6 +399,7 @@ public class MainViewModel : ViewModelBase
         }
         else if (input.Contains(';'))
         {
+            // Handle list format like "1;3;4"
             string[] parts = input.Split(';');
             foreach (string part in parts)
             {
