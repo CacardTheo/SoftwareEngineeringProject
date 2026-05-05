@@ -34,7 +34,7 @@
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Grid.Column="0" Text="{Binding LabelTitle}" FontSize="22" FontWeight="Bold"
                    Foreground="#CDD6F4" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Content="{Binding LabelSettings}"
+        <Button Grid.Column="1" Content="&#x2699;" FontSize="18"
                 Command="{Binding OpenSettingsCommand}"
                 Classes="accent"/>
       </Grid>
