@@ -10,7 +10,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var vm = new MainWindowViewModel();
+        var vm = new MainViewModel();
 
         vm.RequestAddJob = async () =>
         {

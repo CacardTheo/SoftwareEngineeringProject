@@ -15,7 +15,7 @@ namespace EasySaveWpf
             _languageManager = LanguageManager.GetInstance();
         }
 
-        public void Backup(BackupJob job, BackupExecutionContext context)
+        public void Backup(BackupJob job, DailyLogManager logManager, OutputFormat logFormat, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -44,7 +44,7 @@ namespace EasySaveWpf
 
                 foreach (string filePath in files)
                 {
-                    if (!context.CanCopyNextFile())
+                    if (!canCopyNextFile())
                         throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
                     FileInfo fileInfo = new FileInfo(filePath);
@@ -59,10 +59,10 @@ namespace EasySaveWpf
                         File.Copy(filePath, targetPath, true);
                         sw.Stop();
 
-                        long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, context);
-                        context.OnFileCopied(filePath, targetPath, fileInfo.Length);
+                        long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
+                        onFileCopied(filePath, targetPath, fileInfo.Length);
 
-                        context.LogManager.Save(new AppLogEntry
+                        logManager.Save(new AppLogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -72,7 +72,7 @@ namespace EasySaveWpf
                             EncryptionTimeMs = encryptionTime,
                             Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "FileCopied"
-                        }, context.LogFormat);
+                        }, logFormat);
                     }
                     catch (InvalidOperationException)
                     {
@@ -83,7 +83,7 @@ namespace EasySaveWpf
                         sw.Stop();
                         Console.WriteLine($"[ERROR] Failed to copy {fileInfo.Name}: {ex.Message}");
 
-                        context.LogManager.Save(new AppLogEntry
+                        logManager.Save(new AppLogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -93,7 +93,7 @@ namespace EasySaveWpf
                             EncryptionTimeMs = 0,
                             Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "CopyError"
-                        }, context.LogFormat);
+                        }, logFormat);
                     }
                 }
             }
@@ -104,7 +104,7 @@ namespace EasySaveWpf
             catch (UnauthorizedAccessException ex)
             {
                 Console.WriteLine($"[ACCESS DENIED] {ex.Message}");
-                context.LogManager.Save(new AppLogEntry
+                logManager.Save(new AppLogEntry
                 {
                     BackupName = job.Name ?? string.Empty,
                     SourceFilePath = job.SourceDir ?? string.Empty,
@@ -114,7 +114,7 @@ namespace EasySaveWpf
                     EncryptionTimeMs = 0,
                     Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     Event = "AccessDenied"
-                }, context.LogFormat);
+                }, logFormat);
             }
             catch (Exception ex)
             {
@@ -122,13 +122,13 @@ namespace EasySaveWpf
             }
         }
 
-        private static long TryEncrypt(string targetPath, string extension, BackupExecutionContext context)
+        private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
         {
-            bool shouldEncrypt = context.Settings.EncryptedExtensions
+            bool shouldEncrypt = settings.EncryptedExtensions
                 .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
 
             return shouldEncrypt
-                ? context.CryptoService.Encrypt(targetPath, context.Settings.EncryptionKey)
+                ? cryptoService.Encrypt(targetPath, settings.EncryptionKey)
                 : 0;
         }
     }

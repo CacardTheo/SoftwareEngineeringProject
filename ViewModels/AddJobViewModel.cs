@@ -1,12 +1,27 @@
 using System.Windows.Input;
 using EasySaveWpf;
 
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace EasySaveWpf.ViewModels;
 
-public class AddJobViewModel : ViewModelBase
+public class AddJobViewModel : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
     private LanguageManager LangMgr => LanguageManager.GetInstance();
-    private readonly RelayCommand _createCommand;
+    private readonly Command _createCommand;
     private string _name = string.Empty;
     private string _sourceDir = string.Empty;
     private string _targetDir = string.Empty;
@@ -77,9 +92,9 @@ public class AddJobViewModel : ViewModelBase
 
     public AddJobViewModel()
     {
-        _createCommand = new RelayCommand(TryCreate, CanCreate);
+        _createCommand = new Command(TryCreate, CanCreate);
         CreateCommand = _createCommand;
-        CancelCommand = new RelayCommand(() => Cancelled?.Invoke());
+        CancelCommand = new Command(() => Cancelled?.Invoke());
     }
 
     public void RefreshLocalization()

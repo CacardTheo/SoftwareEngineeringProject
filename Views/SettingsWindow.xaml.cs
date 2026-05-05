@@ -12,7 +12,7 @@ public partial class SettingsWindow : Avalonia.Controls.Window
     {
         InitializeComponent();
 
-        var vm = new SettingsViewModel(current);
+        var vm = new SettingsManager(current);
         DataContext = vm;
 
         vm.Saved += settings =>

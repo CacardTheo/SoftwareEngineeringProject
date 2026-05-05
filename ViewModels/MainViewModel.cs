@@ -1,7 +1,27 @@
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using EasySaveWpf;
+using Avalonia.Threading;
+
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace EasySaveWpf.ViewModels;
 
-public class MainViewModel
+public class MainViewModel : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
     private readonly LanguageManager _languageManager;
     private readonly SettingsManager _settingsManager;
     private readonly AppSettings _settings;
@@ -10,11 +30,35 @@ public class MainViewModel
 
     private List<BackupJob> _jobs;
 
-    public event EventHandler<BackupProgressEventArgs>? JobProgressChanged
+    public ObservableCollection<BackupJobViewModel> Jobs { get; } = new();
+    public string LabelTitle    => _languageManager.GetText("gui_title");
+    public string LabelAddJob   => _languageManager.GetText("gui_add_job");
+    public string LabelRunAll   => _languageManager.GetText("gui_run_all");
+    public string LabelSettings => _languageManager.GetText("gui_settings");
+
+    private string _selectedLanguage = "en";
+    public string SelectedLanguage
     {
-        add => _backupProcessor.ProgressChanged += value;
-        remove => _backupProcessor.ProgressChanged -= value;
+        get => _selectedLanguage;
+        set
+        {
+            if (SetField(ref _selectedLanguage, value))
+            {
+                ChangeLanguage(value);
+                RefreshLabels();
+            }
+        }
     }
+
+    public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
+
+    // Callbacks set by the main window to show modal dialogs
+    public Func<Task<BackupJob?>>? RequestAddJob { get; set; }
+    public Func<AppSettings, Task<AppSettings?>>? RequestSettings { get; set; }
+
+    public ICommand RunAllCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
+    public ICommand AddJobCommand { get; }
 
     public MainViewModel()
     {
@@ -32,10 +76,139 @@ public class MainViewModel
             new DailyLogManager(),
             new BusinessSoftwareMonitor(),
             new CryptoSoftService(),
-            () => _settings);
+            _settings);
 
         _configManager = new ConfigManager();
         _jobs = _configManager.LoadJobs();
+
+        _backupProcessor.ProgressChanged += OnJobProgressChanged;
+
+        _selectedLanguage = _settings.Language;
+
+        FillJobCards();
+
+        RunAllCommand = new AsyncCommand(RunAllAsync);
+        AddJobCommand = new AsyncCommand(AddJobAsync);
+        OpenSettingsCommand = new AsyncCommand(OpenSettingsAsync);
+    }
+
+    private void FillJobCards()
+    {
+        foreach (BackupJob job in _jobs)
+        {
+            Jobs.Add(CreateCard(job));
+        }
+    }
+
+    private BackupJobViewModel CreateCard(BackupJob job)
+    {
+        return new BackupJobViewModel(
+            job,
+            onRun: RunCardAsync,
+            onDelete: DeleteCard);
+    }
+
+    private async Task RunCardAsync(BackupJobViewModel card)
+    {
+        card.IsRunning = true;
+        card.Status = BackupStatus.In_Progress;
+        card.Progression = 0;
+
+        try
+        {
+            int index = _jobs.IndexOf(card.Job);
+            await Task.Run(() => RunJobByIndex(index));
+        }
+        finally
+        {
+            card.IsRunning = false;
+        }
+    }
+
+    private void DeleteCard(BackupJobViewModel card)
+    {
+        int index = _jobs.IndexOf(card.Job);
+        if (DeleteJob(index))
+        {
+            Jobs.Remove(card);
+        }
+    }
+
+    private async Task RunAllAsync()
+    {
+        foreach (var card in Jobs)
+            card.IsRunning = true;
+
+        try
+        {
+            await Task.Run(() => RunAllJobs());
+        }
+        finally
+        {
+            foreach (var card in Jobs)
+                card.IsRunning = false;
+        }
+    }
+
+    private async Task AddJobAsync()
+    {
+        if (RequestAddJob == null) return;
+
+        BackupJob? newJob = await RequestAddJob.Invoke();
+        if (newJob == null) return;
+
+        if (AddJob(newJob))
+            Jobs.Add(CreateCard(newJob));
+    }
+
+    private async Task OpenSettingsAsync()
+    {
+        if (RequestSettings == null) return;
+
+        AppSettings current = GetSettings();
+        AppSettings? updated = await RequestSettings.Invoke(current);
+        if (updated == null) return;
+
+        SetLogFormat(updated.LogFormat);
+        SetStateFormat(updated.StateFormat);
+        UpdateBusinessSoftwareProcesses(updated.BusinessSoftwareProcesses);
+        UpdateEncryptedExtensions(updated.EncryptedExtensions);
+        SetEncryptionKey(updated.EncryptionKey);
+        ChangeLanguage(updated.Language);
+
+        SelectedLanguage = updated.Language;
+        RefreshLabels();
+    }
+
+    private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            UpdateCardProgress(jobName, status, progression, currentFile, blocked);
+        });
+    }
+
+    private void UpdateCardProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    {
+        foreach (BackupJobViewModel card in Jobs)
+        {
+            if (card.Name == jobName)
+            {
+                card.ApplyProgress(jobName, status, progression, currentFile, blocked);
+                break;
+            }
+        }
+    }
+
+    private void RefreshLabels()
+    {
+        OnPropertyChanged(nameof(LabelTitle));
+        OnPropertyChanged(nameof(LabelAddJob));
+        OnPropertyChanged(nameof(LabelRunAll));
+        OnPropertyChanged(nameof(LabelSettings));
+
+        foreach (var card in Jobs)
+            card.RefreshLocalization();
     }
 
     public string GetText(string key) => _languageManager.GetText(key);
@@ -57,14 +230,24 @@ public class MainViewModel
 
     public bool CreateJob(string name, string source, string target, string type)
     {
-        if (_jobs.Any(j => j.Name == name)) return false;
+        foreach (BackupJob job in _jobs)
+        {
+            if (job.Name == name)
+                return false;
+        }
+
+        BackupType backupType = BackupType.Differential;
+        if (type.Equals("Full", StringComparison.OrdinalIgnoreCase))
+        {
+            backupType = BackupType.Full;
+        }
 
         _jobs.Add(new BackupJob
         {
             Name = name,
             SourceDir = source,
             TargetDir = target,
-            Type = type.Equals("Full", StringComparison.OrdinalIgnoreCase) ? BackupType.Full : BackupType.Differential
+            Type = backupType
         });
 
         _configManager.SaveJobs(_jobs);
@@ -73,7 +256,15 @@ public class MainViewModel
 
     public bool AddJob(BackupJob job)
     {
-        if (job.Name == null || _jobs.Any(j => j.Name == job.Name)) return false;
+        if (job.Name == null)
+            return false;
+
+        foreach (BackupJob existingJob in _jobs)
+        {
+            if (existingJob.Name == job.Name)
+                return false;
+        }
+
         _jobs.Add(job);
         _configManager.SaveJobs(_jobs);
         return true;
@@ -124,11 +315,7 @@ public class MainViewModel
 
     public void UpdateBusinessSoftwareProcesses(IEnumerable<string> processNames)
     {
-        _settings.BusinessSoftwareProcesses = processNames
-            .Select(n => n.Trim())
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        _settings.BusinessSoftwareProcesses = CreateUniqueList(processNames);
         SaveSettings();
     }
 
@@ -146,11 +333,7 @@ public class MainViewModel
 
     public void UpdateEncryptedExtensions(IEnumerable<string> extensions)
     {
-        _settings.EncryptedExtensions = extensions
-            .Select(e => e.Trim().ToLowerInvariant())
-            .Where(e => !string.IsNullOrWhiteSpace(e))
-            .Distinct()
-            .ToList();
+        _settings.EncryptedExtensions = CreateUniqueExtensionList(extensions);
         SaveSettings();
     }
 
@@ -160,31 +343,112 @@ public class MainViewModel
         SaveSettings();
     }
 
-    private void SaveSettings() => _settingsManager.Save(_settings);
+    private void SaveSettings()
+    {
+        _settingsManager.Save(_settings);
+    }
+
+    private static List<string> CreateUniqueList(IEnumerable<string> values)
+    {
+        var result = new List<string>();
+
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            string cleanValue = value.Trim();
+            bool alreadyAdded = false;
+
+            foreach (string existing in result)
+            {
+                if (string.Equals(existing, cleanValue, StringComparison.OrdinalIgnoreCase))
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+                result.Add(cleanValue);
+        }
+
+        return result;
+    }
+
+    private static List<string> CreateUniqueExtensionList(IEnumerable<string> values)
+    {
+        var result = new List<string>();
+
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            string cleanValue = value.Trim().ToLowerInvariant();
+            bool alreadyAdded = false;
+
+            foreach (string existing in result)
+            {
+                if (existing == cleanValue)
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+                result.Add(cleanValue);
+        }
+
+        return result;
+    }
 
     private static List<int> ParseIndices(string input, int maxCount)
     {
-        var indices = new HashSet<int>();
+        var indices = new List<int>();
 
         if (input.Contains('-'))
         {
-            var parts = input.Split('-');
-            if (parts.Length == 2 && int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
-                for (int i = start; i <= end; i++)
-                    if (i > 0 && i <= maxCount) indices.Add(i - 1);
+            string[] parts = input.Split('-');
+            if (parts.Length == 2)
+            {
+                if (int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
+                {
+                    for (int i = start; i <= end; i++)
+                    {
+                        if (i > 0 && i <= maxCount)
+                        {
+                            int zeroBased = i - 1;
+                            if (!indices.Contains(zeroBased))
+                                indices.Add(zeroBased);
+                        }
+                    }
+                }
+            }
         }
         else if (input.Contains(';'))
         {
-            foreach (var part in input.Split(';'))
+            string[] parts = input.Split(';');
+            foreach (string part in parts)
+            {
                 if (int.TryParse(part, out int id) && id > 0 && id <= maxCount)
-                    indices.Add(id - 1);
+                {
+                    int zeroBased = id - 1;
+                    if (!indices.Contains(zeroBased))
+                        indices.Add(zeroBased);
+                }
+            }
         }
         else
         {
             if (int.TryParse(input, out int id) && id > 0 && id <= maxCount)
+            {
                 indices.Add(id - 1);
+            }
         }
 
-        return indices.OrderBy(i => i).ToList();
+        indices.Sort();
+        return indices;
     }
 }

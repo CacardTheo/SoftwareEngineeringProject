@@ -15,7 +15,7 @@ namespace EasySaveWpf
             _languageManager = LanguageManager.GetInstance();
         }
 
-        public void Backup(BackupJob job, BackupExecutionContext context)
+        public void Backup(BackupJob job, DailyLogManager logManager, OutputFormat logFormat, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -40,7 +40,7 @@ namespace EasySaveWpf
 
             foreach (FileInfo file in files)
             {
-                if (!context.CanCopyNextFile())
+                if (!canCopyNextFile())
                     throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
                 string targetFilePath = file.FullName.Replace(job.SourceDir, job.TargetDir);
@@ -58,10 +58,10 @@ namespace EasySaveWpf
                         File.Copy(file.FullName, targetFilePath, true);
                         stopwatch.Stop();
 
-                        long encryptionTime = TryEncrypt(targetFilePath, file.Extension, context);
-                        context.OnFileCopied(file.FullName, targetFilePath, file.Length);
+                        long encryptionTime = TryEncrypt(targetFilePath, file.Extension, cryptoService, settings);
+                        onFileCopied(file.FullName, targetFilePath, file.Length);
 
-                        context.LogManager.Save(new AppLogEntry
+                        logManager.Save(new AppLogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
@@ -71,7 +71,7 @@ namespace EasySaveWpf
                             EncryptionTimeMs = encryptionTime,
                             Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "FileCopied"
-                        }, context.LogFormat);
+                        }, logFormat);
                     }
                     catch (InvalidOperationException)
                     {
@@ -80,7 +80,7 @@ namespace EasySaveWpf
                     catch (Exception)
                     {
                         stopwatch.Stop();
-                        context.LogManager.Save(new AppLogEntry
+                        logManager.Save(new AppLogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = file.FullName,
@@ -90,19 +90,19 @@ namespace EasySaveWpf
                             EncryptionTimeMs = 0,
                             Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                             Event = "CopyError"
-                        }, context.LogFormat);
+                        }, logFormat);
                     }
                 }
             }
         }
 
-        private static long TryEncrypt(string targetPath, string extension, BackupExecutionContext context)
+        private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
         {
-            bool shouldEncrypt = context.Settings.EncryptedExtensions
+            bool shouldEncrypt = settings.EncryptedExtensions
                 .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
 
             return shouldEncrypt
-                ? context.CryptoService.Encrypt(targetPath, context.Settings.EncryptionKey)
+                ? cryptoService.Encrypt(targetPath, settings.EncryptionKey)
                 : 0;
         }
     }
