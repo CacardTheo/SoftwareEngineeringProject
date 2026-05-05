@@ -8,7 +8,7 @@ public class MainViewModel
     private readonly BackupProcessor _backupProcessor;
     private readonly ConfigManager _configManager;
 
-    private List<BackupJob> _jobs;
+    private readonly List<BackupJob> _jobs;
 
     public event EventHandler<BackupProgressEventArgs>? JobProgressChanged
     {
@@ -29,7 +29,6 @@ public class MainViewModel
 
         _backupProcessor = new BackupProcessor(
             stateManager,
-            new DailyLogManager(),
             new BusinessSoftwareMonitor(),
             new CryptoSoftService(),
             () => _settings);
@@ -132,15 +131,15 @@ public class MainViewModel
         SaveSettings();
     }
 
-    public void SetLogFormat(OutputFormat format)
+    public void ApplySettings(AppSettings updated)
     {
-        _settings.LogFormat = format;
-        SaveSettings();
-    }
-
-    public void SetStateFormat(OutputFormat format)
-    {
-        _settings.StateFormat = format;
+        _settings.LogFormat = updated.LogFormat;
+        _settings.StateFormat = updated.StateFormat;
+        _settings.BusinessSoftwareProcesses = updated.BusinessSoftwareProcesses;
+        _settings.EncryptedExtensions = updated.EncryptedExtensions;
+        _settings.EncryptionKey = updated.EncryptionKey;
+        _languageManager.SetLanguage(updated.Language);
+        _settings.Language = updated.Language;
         SaveSettings();
     }
 
@@ -164,7 +163,7 @@ public class MainViewModel
 
     private static List<int> ParseIndices(string input, int maxCount)
     {
-        var indices = new HashSet<int>();
+        HashSet<int> indices = [];
 
         if (input.Contains('-'))
         {

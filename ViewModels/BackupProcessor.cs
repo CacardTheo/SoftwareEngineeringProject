@@ -1,11 +1,11 @@
 using EasySaveWpf;
+using EasyLog;
 
 namespace EasySaveWpf.ViewModels;
 
 public class BackupProcessor
 {
     private readonly StateManager _stateManager;
-    private readonly DailyLogManager _dailyLogManager;
     private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
     private readonly CryptoSoftService _cryptoSoftService;
     private readonly Func<AppSettings> _settingsProvider;
@@ -14,13 +14,11 @@ public class BackupProcessor
 
     public BackupProcessor(
         StateManager stateManager,
-        DailyLogManager dailyLogManager,
         BusinessSoftwareMonitor businessSoftwareMonitor,
         CryptoSoftService cryptoSoftService,
         Func<AppSettings> settingsProvider)
     {
         _stateManager = stateManager;
-        _dailyLogManager = dailyLogManager;
         _businessSoftwareMonitor = businessSoftwareMonitor;
         _cryptoSoftService = cryptoSoftService;
         _settingsProvider = settingsProvider;
@@ -30,10 +28,11 @@ public class BackupProcessor
     {
         AppSettings settings = _settingsProvider();
         _stateManager.SetFormat(settings.StateFormat);
+        var logService = new LogService(settings.LogFormat);
 
         if (IsBusinessSoftwareRunning(settings, out string detectedBeforeStart))
         {
-            LogBusinessSoftwareBlock(job, detectedBeforeStart, settings.LogFormat, "BlockedBeforeStart");
+            LogBusinessSoftwareBlock(job, detectedBeforeStart, logService, "BlockedBeforeStart");
             RaiseProgress(job.Name, BackupStatus.Inactive, 0, blocked: true);
             return false;
         }
@@ -81,8 +80,7 @@ public class BackupProcessor
 
             var context = new BackupExecutionContext
             {
-                LogManager = _dailyLogManager,
-                LogFormat = settings.LogFormat,
+                LogService = logService,
                 Settings = settings,
                 CryptoService = _cryptoSoftService,
                 OnFileCopied = (sourceFile, destFile, fileSize) =>
@@ -132,7 +130,7 @@ public class BackupProcessor
         catch (InvalidOperationException ex) when (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
         {
             IsBusinessSoftwareRunning(settings, out string detectedProcess);
-            LogBusinessSoftwareBlock(job, detectedProcess, settings.LogFormat, "StoppedDuringExecution");
+            LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
             RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
 
             _stateManager.UpdateJobState(new StateEntry
@@ -183,21 +181,17 @@ public class BackupProcessor
     private bool IsBusinessSoftwareRunning(AppSettings settings, out string detectedProcess) =>
         _businessSoftwareMonitor.TryFindRunningBusinessSoftware(settings.BusinessSoftwareProcesses, out detectedProcess);
 
-    private void LogBusinessSoftwareBlock(BackupJob job, string processName, OutputFormat format, string eventName)
+    private void LogBusinessSoftwareBlock(BackupJob job, string processName, LogService logService, string eventName)
     {
-        _dailyLogManager.Save(new AppLogEntry
+        logService.Save(new LogEntry
         {
-            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
             BackupName = job.Name ?? string.Empty,
             SourceFilePath = job.SourceDir ?? string.Empty,
             TargetFilePath = job.TargetDir ?? string.Empty,
             FileSize = 0,
             FileTransferTimeMs = 0,
             EncryptionTimeMs = 0,
-            Event = string.IsNullOrWhiteSpace(processName)
-                ? eventName
-                : $"{eventName}:{processName}"
-        }, format);
+            Event = string.IsNullOrWhiteSpace(processName) ? eventName : $"{eventName}:{processName}"
+        });
     }
 }
-

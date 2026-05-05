@@ -1,6 +1,5 @@
+using EasyLog;
 using EasySaveWpf;
-using System.Globalization;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
@@ -12,7 +11,7 @@ public class StateManager
 
     private readonly JsonSerializerOptions _jsonOptions;
 
-    private OutputFormat _format = OutputFormat.Json;
+    private LogFormat _format = LogFormat.Json;
 
     public StateManager()
     {
@@ -33,14 +32,14 @@ public class StateManager
         };
     }
 
-    public void SetFormat(OutputFormat format)
+    public void SetFormat(LogFormat format)
     {
         _format = format;
     }
 
     public void SaveState(List<StateEntry> states)
     {
-        if (_format == OutputFormat.Xml)
+        if (_format == LogFormat.Xml)
         {
             string xmlPath = Path.Combine(_stateFolderPath, "state.xml");
             var serializer = new XmlSerializer(typeof(List<StateEntry>));
@@ -56,7 +55,7 @@ public class StateManager
 
     public List<StateEntry> LoadStates()
     {
-        if (_format == OutputFormat.Xml)
+        if (_format == LogFormat.Xml)
         {
             string xmlPath = Path.Combine(_stateFolderPath, "state.xml");
             if (!File.Exists(xmlPath))
