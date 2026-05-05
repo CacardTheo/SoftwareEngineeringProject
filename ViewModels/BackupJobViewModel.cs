@@ -1,9 +1,12 @@
 using System.Windows.Input;
 using EasySaveWpf;
 
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace EasySaveWpf.ViewModels;
 
-public class JobCardViewModel : ViewModelBase
+public class BackupJobViewModel : ViewModelBase
 {
     private BackupStatus _status = BackupStatus.Inactive;
     private int _progression;
@@ -26,8 +29,8 @@ public class JobCardViewModel : ViewModelBase
             SetField(ref _status, value);
             OnPropertyChanged(nameof(StatusText));
             OnPropertyChanged(nameof(StatusColor));
-            OnPropertyChanged(nameof(HasBeenRun));
-            OnPropertyChanged(nameof(IsInProgress));
+                OnPropertyChanged(nameof(HasBeenRun));
+                OnPropertyChanged(nameof(IsInProgress));
         }
     }
 
@@ -49,7 +52,7 @@ public class JobCardViewModel : ViewModelBase
 
     public bool IsNotRunning => !_isRunning;
 
-    public bool HasBeenRun => Status != BackupStatus.Inactive;
+    public bool HasBeenRun  => Status != BackupStatus.Inactive;
     public bool IsInProgress => Status == BackupStatus.In_Progress;
 
     public bool BlockedByBusinessSoftware
@@ -71,50 +74,71 @@ public class JobCardViewModel : ViewModelBase
     }
 
     public bool HasCurrentFile => !string.IsNullOrWhiteSpace(CurrentFile);
-
-    public string StatusText => Status switch
+    public string StatusText
     {
-        BackupStatus.In_Progress => $"{Progression}%",
-        BackupStatus.Ended => LangMgr.GetText("gui_done"),
-        BackupStatus.Error => LangMgr.GetText("gui_error"),
-        BackupStatus.Inactive when BlockedByBusinessSoftware => LangMgr.GetText("gui_blocked"),
-        _ => LangMgr.GetText("gui_idle")
-    };
+        get
+        {
+            if (Status == BackupStatus.In_Progress)
+                return Progression + "%";
 
-    public string StatusColor => Status switch
+            if (Status == BackupStatus.Ended)
+                return LangMgr["gui_done"];
+
+            if (Status == BackupStatus.Error)
+                return LangMgr["gui_error"];
+
+            if (Status == BackupStatus.Inactive && BlockedByBusinessSoftware)
+                return LangMgr["gui_blocked"];
+
+            return LangMgr["gui_idle"];
+        }
+    }
+
+    public string StatusColor
     {
-        BackupStatus.In_Progress => "#4A90D9",
-        BackupStatus.Ended => "#4CAF50",
-        BackupStatus.Error => "#F44336",
-        BackupStatus.Inactive when BlockedByBusinessSoftware => "#FF9800",
-        _ => "#9E9E9E"
-    };
+        get
+        {
+            if (Status == BackupStatus.In_Progress)
+                return "#4A90D9";
+
+            if (Status == BackupStatus.Ended)
+                return "#4CAF50";
+
+            if (Status == BackupStatus.Error)
+                return "#F44336";
+
+            if (Status == BackupStatus.Inactive && BlockedByBusinessSoftware)
+                return "#FF9800";
+
+            return "#9E9E9E";
+        }
+    }
 
     public ICommand RunCommand { get; }
     public ICommand DeleteCommand { get; }
 
-    public JobCardViewModel(BackupJob job, Func<JobCardViewModel, Task> onRun, Action<JobCardViewModel> onDelete)
+    public BackupJobViewModel(BackupJob job, Func<BackupJobViewModel, Task> onRun, Action<BackupJobViewModel> onDelete)
     {
         Job = job;
-        LanguageManager.Instance.PropertyChanged += (s, e) => OnPropertyChanged(nameof(StatusText));
 
-        RunCommand = new AsyncRelayCommand(
+        RunCommand = new AsyncCommand(
             () => onRun(this),
             () => !IsRunning);
 
-        DeleteCommand = new RelayCommand(
+        DeleteCommand = new Command(
             () => onDelete(this),
             () => !IsRunning);
+            
+        LanguageManager.Instance.PropertyChanged += (s, e) => OnPropertyChanged(nameof(StatusText));
     }
 
-    public void ApplyProgress(BackupProgressEventArgs args)
+    public void ApplyProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
     {
-        Status = args.Status;
-        Progression = Math.Max(0, args.Progression);
-        BlockedByBusinessSoftware = args.BlockedByBusinessSoftware;
-        if (!string.IsNullOrEmpty(args.CurrentFile))
-            CurrentFile = args.CurrentFile;
+        Status = status;
+        Progression = Math.Max(0, progression);
+        BlockedByBusinessSoftware = blocked;
+        if (!string.IsNullOrEmpty(currentFile))
+            CurrentFile = currentFile;
     }
-
 
 }

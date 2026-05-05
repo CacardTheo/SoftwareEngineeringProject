@@ -5,7 +5,7 @@ namespace EasySaveWpf.ViewModels;
 
 public class AddJobViewModel : ViewModelBase
 {
-    private readonly RelayCommand _createCommand;
+    private readonly Command _createCommand;
     private string _name = string.Empty;
     private string _sourceDir = string.Empty;
     private string _targetDir = string.Empty;
@@ -68,9 +68,9 @@ public class AddJobViewModel : ViewModelBase
 
     public AddJobViewModel()
     {
-        _createCommand = new RelayCommand(TryCreate, CanCreate);
+        _createCommand = new Command(TryCreate, CanCreate);
         CreateCommand = _createCommand;
-        CancelCommand = new RelayCommand(() => Cancelled?.Invoke());
+        CancelCommand = new Command(() => Cancelled?.Invoke());
     }
 
     private bool CanCreate() =>
