@@ -1,6 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:EasySaveWpf.ViewModels"
         x:Class="EasySaveWpf.Views.MainWindow"
         Title="EasySave v2.0"
         Width="900" Height="600"
@@ -13,6 +12,9 @@
       <Setter Property="Background" Value="#4A90D9"/>
       <Setter Property="Foreground" Value="White"/>
       <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#3A7EC8"/>
@@ -20,10 +22,26 @@
     <Style Selector="Button.danger">
       <Setter Property="Background" Value="#4A4A6E"/>
       <Setter Property="Foreground" Value="#CF6679"/>
-      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Width" Value="38"/>
+      <Setter Property="Height" Value="38"/>
     </Style>
     <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#5A5A7E"/>
+    </Style>
+    <Style Selector="Button.icon">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Width" Value="38"/>
+      <Setter Property="Height" Value="38"/>
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#3A3A55"/>
     </Style>
   </Window.Styles>
 
@@ -46,11 +64,17 @@
         <Button Grid.Column="0" Content="{Binding LangMgr[gui_add_job]}"
                 Command="{Binding AddJobCommand}"
                 Classes="accent"
+                Width="150"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
                 Margin="0,0,12,0"/>
         <Button Grid.Column="1" Content="{Binding LangMgr[gui_run_all]}"
                 Command="{Binding RunAllCommand}"
                 Classes="accent"
-                HorizontalAlignment="Right" Width="140"/>
+                HorizontalAlignment="Right"
+                Width="150"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"/>
       </Grid>
     </Border>
 
@@ -74,13 +98,12 @@
                   <Button Grid.Column="1" Content="&#x25BA;"
                           Command="{Binding RunCommand}"
                           IsEnabled="{Binding IsNotRunning}"
-                          Classes="accent"
-                          Width="36" Margin="0,0,6,0"/>
+                          Classes="accent icon"
+                          Margin="0,0,6,0"/>
                   <Button Grid.Column="2" Content="&#x2715;"
                           Command="{Binding DeleteCommand}"
                           IsEnabled="{Binding IsNotRunning}"
-                          Classes="danger"
-                          Width="36"/>
+                          Classes="danger icon"/>
                 </Grid>
 
                 <!-- paths -->
