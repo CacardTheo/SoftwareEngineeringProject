@@ -6,7 +6,6 @@ namespace EasySaveWpf.ViewModels;
 
 public class SettingsViewModel : ViewModelBase
 {
-    private LanguageManager LangMgr => LanguageManager.GetInstance();
     private string _language = "en";
     private LogFormat _logFormat;
     private LogFormat _stateFormat;
@@ -58,16 +57,7 @@ public class SettingsViewModel : ViewModelBase
         LogFormat.Xml
     ];
 
-    public string WindowTitle => LangMgr.GetText("gui_settings_title");
-    public string HeaderText => LangMgr.GetText("gui_settings_title");
-    public string LanguageLabel => LangMgr.GetText("gui_language");
-    public string LogFormatLabel => LangMgr.GetText("gui_log_format");
-    public string StateFormatLabel => LangMgr.GetText("gui_state_format");
-    public string BusinessProcessesLabel => LangMgr.GetText("gui_business_processes");
-    public string EncryptedExtensionsLabel => LangMgr.GetText("gui_encrypted_extensions");
-    public string EncryptionKeyLabel => LangMgr.GetText("gui_encryption_key");
-    public string SaveLabel => LangMgr.GetText("gui_save");
-    public string CancelLabel => LangMgr.GetText("gui_cancel");
+
 
     public event Action<AppSettings>? Saved;
     public event Action? Cancelled;
@@ -86,20 +76,6 @@ public class SettingsViewModel : ViewModelBase
 
         SaveCommand = new RelayCommand(Save);
         CancelCommand = new RelayCommand(() => Cancelled?.Invoke());
-    }
-
-    public void RefreshLocalization()
-    {
-        OnPropertyChanged(nameof(WindowTitle));
-        OnPropertyChanged(nameof(HeaderText));
-        OnPropertyChanged(nameof(LanguageLabel));
-        OnPropertyChanged(nameof(LogFormatLabel));
-        OnPropertyChanged(nameof(StateFormatLabel));
-        OnPropertyChanged(nameof(BusinessProcessesLabel));
-        OnPropertyChanged(nameof(EncryptedExtensionsLabel));
-        OnPropertyChanged(nameof(EncryptionKeyLabel));
-        OnPropertyChanged(nameof(SaveLabel));
-        OnPropertyChanged(nameof(CancelLabel));
     }
 
     private void Save()

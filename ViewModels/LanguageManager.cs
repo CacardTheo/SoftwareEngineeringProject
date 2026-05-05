@@ -3,16 +3,23 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.ComponentModel;
 
 namespace EasySaveWpf.ViewModels
 {
-    public class LanguageManager
+    public class LanguageManager : INotifyPropertyChanged
     {
         private static LanguageManager _instance;
         private static readonly object _lock = new object();
 
         private Dictionary<string, string> _translations;
         private string _currentLanguage = "en";
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string this[string key] => GetText(key);
+
+        public static LanguageManager Instance => GetInstance();
 
         private LanguageManager() { LoadTranslations(); }
 
@@ -33,8 +40,13 @@ namespace EasySaveWpf.ViewModels
 
         public void SetLanguage(string lang)
         {
-            _currentLanguage = lang;
-            LoadTranslations();
+            if (_currentLanguage != lang)
+            {
+                _currentLanguage = lang;
+                LoadTranslations();
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
+            }
         }
 
         public List<string> GetAvailableLanguages()

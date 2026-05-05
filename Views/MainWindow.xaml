@@ -32,7 +32,7 @@
     <!-- Top bar -->
     <Border DockPanel.Dock="Top" Background="#16162A" Padding="20,12">
       <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Grid.Column="0" Text="{Binding LabelTitle}" FontSize="22" FontWeight="Bold"
+        <TextBlock Grid.Column="0" Text="{Binding LangMgr[gui_title]}" FontSize="22" FontWeight="Bold"
                    Foreground="#CDD6F4" VerticalAlignment="Center"/>
         <Button Grid.Column="1" Content="&#x2699;" FontSize="18"
                 Command="{Binding OpenSettingsCommand}"
@@ -43,11 +43,11 @@
     <!-- Bottom bar -->
     <Border DockPanel.Dock="Bottom" Background="#16162A" Padding="20,12">
       <Grid ColumnDefinitions="Auto,*">
-        <Button Grid.Column="0" Content="{Binding LabelAddJob}"
+        <Button Grid.Column="0" Content="{Binding LangMgr[gui_add_job]}"
                 Command="{Binding AddJobCommand}"
                 Classes="accent"
                 Margin="0,0,12,0"/>
-        <Button Grid.Column="1" Content="{Binding LabelRunAll}"
+        <Button Grid.Column="1" Content="{Binding LangMgr[gui_run_all]}"
                 Command="{Binding RunAllCommand}"
                 Classes="accent"
                 HorizontalAlignment="Right" Width="140"/>
@@ -85,8 +85,16 @@
 
                 <!-- paths -->
                 <StackPanel>
-                  <TextBlock FontSize="12" Foreground="#6C7086" Text="{Binding SourceLineText}"/>
-                  <TextBlock FontSize="12" Foreground="#6C7086" Margin="0,2,0,0" Text="{Binding TargetLineText}"/>
+                  <TextBlock FontSize="12" Foreground="#6C7086">
+                    <Run Text="{Binding LangMgr[gui_from]}"/>
+                    <Run Text=" "/>
+                    <Run Text="{Binding SourceDir}"/>
+                  </TextBlock>
+                  <TextBlock FontSize="12" Foreground="#6C7086" Margin="0,2,0,0">
+                    <Run Text="{Binding LangMgr[gui_to]}"/>
+                    <Run Text=" "/>
+                    <Run Text="{Binding TargetDir}"/>
+                  </TextBlock>
                 </StackPanel>
 
                 <!-- status / progress row — shown once the job has run at least once -->
@@ -103,13 +111,16 @@
                 </Grid>
 
                 <TextBlock IsVisible="{Binding HasCurrentFile}"
-                           Text="{Binding CurrentFileLabel}"
                            Foreground="#9399B2" FontSize="11" Margin="0,6,0,0"
-                           TextWrapping="Wrap"/>
+                           TextWrapping="Wrap">
+                  <Run Text="{Binding LangMgr[gui_current_file]}"/>
+                  <Run Text=" "/>
+                  <Run Text="{Binding CurrentFile}"/>
+                </TextBlock>
 
                 <!-- blocked warning -->
                 <TextBlock IsVisible="{Binding BlockedByBusinessSoftware}"
-                           Text="{Binding BlockedMessage}"
+                           Text="{Binding LangMgr[gui_blocked_msg]}"
                            Foreground="#FF9800" FontSize="12" Margin="0,6,0,0"/>
 
               </StackPanel>

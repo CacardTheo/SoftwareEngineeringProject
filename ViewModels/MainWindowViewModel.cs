@@ -10,14 +10,6 @@ public class MainWindowViewModel : ViewModelBase
     private readonly MainViewModel _mainViewModel;
 
     public ObservableCollection<JobCardViewModel> Jobs { get; } = new();
-    private LanguageManager LangMgr => LanguageManager.GetInstance();
-    public string LabelTitle => LangMgr.GetText("gui_title");
-    public string LabelAddJob => LangMgr.GetText("gui_add_job");
-    public string LabelRunAll => LangMgr.GetText("gui_run_all");
-    public string LabelSettings => LangMgr.GetText("gui_settings");
-
-
-
     // Callbacks set by the main window to show modal dialogs
     public Func<Task<BackupJob?>>? RequestAddJob { get; set; }
     public Func<AppSettings, Task<AppSettings?>>? RequestSettings { get; set; }
@@ -105,8 +97,6 @@ public class MainWindowViewModel : ViewModelBase
         if (updated == null) return;
 
         _mainViewModel.ApplySettings(updated);
-
-        RefreshLabels();
     }
 
     private void OnJobProgressChanged(object? sender, BackupProgressEventArgs args)
@@ -116,16 +106,5 @@ public class MainWindowViewModel : ViewModelBase
             var card = Jobs.FirstOrDefault(j => j.Name == args.JobName);
             card?.ApplyProgress(args);
         });
-    }
-
-    private void RefreshLabels()
-    {
-        OnPropertyChanged(nameof(LabelTitle));
-        OnPropertyChanged(nameof(LabelAddJob));
-        OnPropertyChanged(nameof(LabelRunAll));
-        OnPropertyChanged(nameof(LabelSettings));
-
-        foreach (var card in Jobs)
-            card.RefreshLocalization();
     }
 }

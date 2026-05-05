@@ -12,15 +12,11 @@ public class JobCardViewModel : ViewModelBase
     private bool _blockedByBusinessSoftware;
 
     public BackupJob Job { get; }
-    private LanguageManager LangMgr => LanguageManager.GetInstance();
 
     public string Name => Job.Name ?? string.Empty;
     public string TypeLabel => Job.Type.ToString();
     public string SourceDir => Job.SourceDir ?? string.Empty;
     public string TargetDir => Job.TargetDir ?? string.Empty;
-    public string SourceLineText => $"{LangMgr.GetText("gui_from")} {SourceDir}";
-    public string TargetLineText => $"{LangMgr.GetText("gui_to")} {TargetDir}";
-    public string BlockedMessage => LangMgr.GetText("gui_blocked_msg");
 
     public BackupStatus Status
     {
@@ -30,8 +26,8 @@ public class JobCardViewModel : ViewModelBase
             SetField(ref _status, value);
             OnPropertyChanged(nameof(StatusText));
             OnPropertyChanged(nameof(StatusColor));
-                OnPropertyChanged(nameof(HasBeenRun));
-                OnPropertyChanged(nameof(IsInProgress));
+            OnPropertyChanged(nameof(HasBeenRun));
+            OnPropertyChanged(nameof(IsInProgress));
         }
     }
 
@@ -53,7 +49,7 @@ public class JobCardViewModel : ViewModelBase
 
     public bool IsNotRunning => !_isRunning;
 
-    public bool HasBeenRun  => Status != BackupStatus.Inactive;
+    public bool HasBeenRun => Status != BackupStatus.Inactive;
     public bool IsInProgress => Status == BackupStatus.In_Progress;
 
     public bool BlockedByBusinessSoftware
@@ -70,13 +66,11 @@ public class JobCardViewModel : ViewModelBase
             if (SetField(ref _currentFile, value))
             {
                 OnPropertyChanged(nameof(HasCurrentFile));
-                OnPropertyChanged(nameof(CurrentFileLabel));
             }
         }
     }
 
     public bool HasCurrentFile => !string.IsNullOrWhiteSpace(CurrentFile);
-    public string CurrentFileLabel => $"{LangMgr.GetText("gui_current_file")} {CurrentFile}";
 
     public string StatusText => Status switch
     {
@@ -102,6 +96,7 @@ public class JobCardViewModel : ViewModelBase
     public JobCardViewModel(BackupJob job, Func<JobCardViewModel, Task> onRun, Action<JobCardViewModel> onDelete)
     {
         Job = job;
+        LanguageManager.Instance.PropertyChanged += (s, e) => OnPropertyChanged(nameof(StatusText));
 
         RunCommand = new AsyncRelayCommand(
             () => onRun(this),
@@ -121,12 +116,5 @@ public class JobCardViewModel : ViewModelBase
             CurrentFile = args.CurrentFile;
     }
 
-    public void RefreshLocalization()
-    {
-        OnPropertyChanged(nameof(SourceLineText));
-        OnPropertyChanged(nameof(TargetLineText));
-        OnPropertyChanged(nameof(BlockedMessage));
-        OnPropertyChanged(nameof(CurrentFileLabel));
-        OnPropertyChanged(nameof(StatusText));
-    }
+
 }

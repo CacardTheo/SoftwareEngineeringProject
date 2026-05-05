@@ -5,7 +5,6 @@ namespace EasySaveWpf.ViewModels;
 
 public class AddJobViewModel : ViewModelBase
 {
-    private LanguageManager LangMgr => LanguageManager.GetInstance();
     private readonly RelayCommand _createCommand;
     private string _name = string.Empty;
     private string _sourceDir = string.Empty;
@@ -42,14 +41,6 @@ public class AddJobViewModel : ViewModelBase
         }
     }
 
-    public string WindowTitle => LangMgr.GetText("gui_add_job_title");
-    public string HeaderText => LangMgr.GetText("gui_add_job_title");
-    public string NameLabel => LangMgr.GetText("gui_add_job_name");
-    public string SourceLabel => LangMgr.GetText("gui_add_job_source");
-    public string TargetLabel => LangMgr.GetText("gui_add_job_target");
-    public string TypeLabel => LangMgr.GetText("gui_add_job_type");
-    public string CreateLabel => LangMgr.GetText("gui_create");
-    public string CancelLabel => LangMgr.GetText("gui_cancel");
 
     public BackupType SelectedType
     {
@@ -80,18 +71,6 @@ public class AddJobViewModel : ViewModelBase
         _createCommand = new RelayCommand(TryCreate, CanCreate);
         CreateCommand = _createCommand;
         CancelCommand = new RelayCommand(() => Cancelled?.Invoke());
-    }
-
-    public void RefreshLocalization()
-    {
-        OnPropertyChanged(nameof(WindowTitle));
-        OnPropertyChanged(nameof(HeaderText));
-        OnPropertyChanged(nameof(NameLabel));
-        OnPropertyChanged(nameof(SourceLabel));
-        OnPropertyChanged(nameof(TargetLabel));
-        OnPropertyChanged(nameof(TypeLabel));
-        OnPropertyChanged(nameof(CreateLabel));
-        OnPropertyChanged(nameof(CancelLabel));
     }
 
     private bool CanCreate() =>
