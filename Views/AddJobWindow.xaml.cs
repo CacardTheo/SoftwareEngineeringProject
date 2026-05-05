@@ -6,7 +6,9 @@ namespace EasySaveWpf.Views;
 
 public partial class AddJobWindow : Avalonia.Controls.Window
 {
-    private readonly TaskCompletionSource<BackupJob?> _tcs = new();
+    // Événements levés quand l'utilisateur confirme ou annule
+    public event Action<BackupJob>? JobCreated;
+    public event Action? Cancelled;
 
     public AddJobWindow()
     {
@@ -17,20 +19,16 @@ public partial class AddJobWindow : Avalonia.Controls.Window
 
         vm.JobCreated += job =>
         {
-            _tcs.TrySetResult(job);
+            JobCreated?.Invoke(job);
             Close();
         };
 
         vm.Cancelled += () =>
         {
-            _tcs.TrySetResult(null);
+            Cancelled?.Invoke();
             Close();
         };
-
-        Closed += (_, _) => _tcs.TrySetResult(null);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
-
-    public Task<BackupJob?> GetResultAsync() => _tcs.Task;
 }

@@ -18,15 +18,25 @@ namespace EasySaveWpf
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
-                Console.WriteLine("[ERROR] Missing paths in BackupJob.");
+                Console.WriteLine(_languageManager.GetText("log_error_missing_paths"));
                 return;
             }
 
             try
             {
-                if (!Directory.Exists(job.SourceDir))
+                if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
                 {
-                    Console.WriteLine("[ERROR] Source directory does not exist!");
+                    Console.WriteLine(_languageManager.GetText("log_error_source_not_found"));
+                    return;
+                }
+
+                // Si la source est un fichier unique, on le copie directement
+                if (File.Exists(job.SourceDir))
+                {
+                    if (!canCopyNextFile())
+                        throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+
+                    CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied);
                     return;
                 }
 
@@ -79,7 +89,7 @@ namespace EasySaveWpf
                     catch (Exception ex)
                     {
                         sw.Stop();
-                        Console.WriteLine($"[ERROR] Failed to copy {fileInfo.Name}: {ex.Message}");
+                        Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{fileInfo.Name}: {ex.Message}");
 
                         logService.Save(new LogEntry
                         {
@@ -100,7 +110,7 @@ namespace EasySaveWpf
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"[ACCESS DENIED] {ex.Message}");
+                Console.WriteLine($"{_languageManager.GetText("log_error_access_denied")}{ex.Message}");
                 logService.Save(new LogEntry
                 {
                     BackupName = job.Name ?? string.Empty,
@@ -114,18 +124,45 @@ namespace EasySaveWpf
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[STRATEGY ERROR] {ex.Message}");
+                Console.WriteLine($"{_languageManager.GetText("log_error_strategy")}{ex.Message}");
             }
+        }
+
+        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied)
+        {
+            FileInfo fileInfo = new FileInfo(sourcePath);
+            if (!Directory.Exists(targetDir))
+                Directory.CreateDirectory(targetDir);
+
+            string targetPath = Path.Combine(targetDir, fileInfo.Name);
+
+            Stopwatch sw = Stopwatch.StartNew();
+            File.Copy(sourcePath, targetPath, true);
+            sw.Stop();
+
+            long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
+            onFileCopied(sourcePath, targetPath, fileInfo.Length);
+
+            logService.Save(new LogEntry
+            {
+                BackupName = job.Name ?? string.Empty,
+                SourceFilePath = sourcePath,
+                TargetFilePath = targetPath,
+                FileSize = fileInfo.Length,
+                FileTransferTimeMs = sw.ElapsedMilliseconds,
+                EncryptionTimeMs = encryptionTime,
+                Event = "FileCopied"
+            });
         }
 
         private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
         {
-            bool shouldEncrypt = settings.EncryptedExtensions
-                .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
-
-            return shouldEncrypt
-                ? cryptoService.Encrypt(targetPath, settings.EncryptionKey)
-                : 0;
+            foreach (string ext in settings.EncryptedExtensions)
+            {
+                if (ext.Equals(extension, StringComparison.OrdinalIgnoreCase))
+                    return cryptoService.Encrypt(targetPath, settings.EncryptionKey);
+            }
+            return 0;
         }
     }
 }

@@ -1,7 +1,6 @@
 using System.IO;
 using System.Text.Json;
 using System.Collections.Generic;
-using System.Linq;
 using System;
 using System.ComponentModel;
 
@@ -59,27 +58,31 @@ namespace EasySaveWpf.ViewModels
 
                 if (Directory.Exists(dirPath))
                 {
-                    var files = Directory.GetFiles(dirPath, "*.json");
-                    languages.AddRange(files.Select(Path.GetFileNameWithoutExtension));
+                    foreach (string file in Directory.GetFiles(dirPath, "*.json"))
+                        languages.Add(Path.GetFileNameWithoutExtension(file));
                 }
                 else
                 {
                     string fallbackDirPath = Path.Combine("Resources", "Languages");
                     if (Directory.Exists(fallbackDirPath))
                     {
-                        var files = Directory.GetFiles(fallbackDirPath, "*.json");
-                        languages.AddRange(files.Select(Path.GetFileNameWithoutExtension));
+                        foreach (string file in Directory.GetFiles(fallbackDirPath, "*.json"))
+                            languages.Add(Path.GetFileNameWithoutExtension(file));
                     }
                 }
             }
             catch { }
 
             if (languages.Count == 0)
-            {
                 languages.Add("en");
-            }
 
-            return languages.Distinct().ToList();
+            var unique = new List<string>();
+            foreach (string lang in languages)
+            {
+                if (!unique.Contains(lang))
+                    unique.Add(lang);
+            }
+            return unique;
         }
 
         private void LoadTranslations()
@@ -114,5 +117,30 @@ namespace EasySaveWpf.ViewModels
             }
         }
         public string GetText(string key) => _translations != null && _translations.ContainsKey(key) ? _translations[key] : key;
+
+        // Lit une clé dans un fichier de langue précis, sans changer la langue courante
+        public string GetTextForLanguage(string lang, string key)
+        {
+            try
+            {
+                string baseDir = AppContext.BaseDirectory;
+                string path = Path.Combine(baseDir, "Resources", "Languages", $"{lang}.json");
+
+                if (!File.Exists(path))
+                    path = Path.Combine("Resources", "Languages", $"{lang}.json");
+
+                if (!File.Exists(path))
+                    return key;
+
+                string json = File.ReadAllText(path);
+                Dictionary<string, string>? translations = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+
+                if (translations != null && translations.ContainsKey(key))
+                    return translations[key];
+            }
+            catch { }
+
+            return key;
+        }
     }
 }

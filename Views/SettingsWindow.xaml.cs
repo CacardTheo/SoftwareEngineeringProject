@@ -6,7 +6,9 @@ namespace EasySaveWpf.Views;
 
 public partial class SettingsWindow : Avalonia.Controls.Window
 {
-    private readonly TaskCompletionSource<AppSettings?> _tcs = new();
+    // Événements levés quand l'utilisateur sauvegarde ou annule
+    public event Action<AppSettings>? Saved;
+    public event Action? Cancelled;
 
     public SettingsWindow(AppSettings current)
     {
@@ -17,20 +19,16 @@ public partial class SettingsWindow : Avalonia.Controls.Window
 
         vm.Saved += settings =>
         {
-            _tcs.TrySetResult(settings);
+            Saved?.Invoke(settings);
             Close();
         };
 
         vm.Cancelled += () =>
         {
-            _tcs.TrySetResult(null);
+            Cancelled?.Invoke();
             Close();
         };
-
-        Closed += (_, _) => _tcs.TrySetResult(null);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
-
-    public Task<AppSettings?> GetResultAsync() => _tcs.Task;
 }

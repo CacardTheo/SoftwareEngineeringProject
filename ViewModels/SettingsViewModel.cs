@@ -51,6 +51,29 @@ public class SettingsViewModel : ViewModelBase
 
     public List<string> AvailableLanguages => LangMgr.GetAvailableLanguages();
 
+    // Affiche le nom de chaque langue dans sa propre langue, ex: "English / Français / Русский"
+    // Reste lisible quelle que soit la langue active
+    public string LanguageSelectorLabel
+    {
+        get
+        {
+            List<string> parts = new List<string>();
+            foreach (string lang in LangMgr.GetAvailableLanguages())
+            {
+                string name = LangMgr.GetTextForLanguage(lang, "gui_language_name");
+                parts.Add(name);
+            }
+
+            string result = string.Empty;
+            for (int i = 0; i < parts.Count; i++)
+            {
+                if (i > 0) result += " / ";
+                result += parts[i];
+            }
+            return result;
+        }
+    }
+
     public List<LogFormat> AvailableFormats { get; } =
     [
         LogFormat.Json,
@@ -92,10 +115,30 @@ public class SettingsViewModel : ViewModelBase
         Saved?.Invoke(updated);
     }
 
-    private static List<string> ParseLines(string multiline) =>
-        multiline.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                 .Select(s => s.Trim())
-                 .Where(s => s.Length > 0)
-                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                 .ToList();
+    private static List<string> ParseLines(string multiline)
+    {
+        string[] lines = multiline.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var result = new List<string>();
+
+        foreach (string line in lines)
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length == 0) continue;
+
+            bool alreadyAdded = false;
+            foreach (string existing in result)
+            {
+                if (string.Equals(existing, trimmed, StringComparison.OrdinalIgnoreCase))
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+                result.Add(trimmed);
+        }
+
+        return result;
+    }
 }

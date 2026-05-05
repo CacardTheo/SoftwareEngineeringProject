@@ -60,5 +60,11 @@
   "gui_encrypted_extensions": "Extensions chiffrées (une par ligne, ex. .txt)",
   "gui_encryption_key": "Clé de chiffrement",
   "gui_save": "Enregistrer",
-  "gui_current_file": "Fichier courant :"
+  "gui_current_file": "Fichier courant :",
+  "gui_language_name": "Français",
+  "log_error_missing_paths": "Chemin source ou cible manquant dans le job.",
+  "log_error_source_not_found": "Le chemin source n'existe pas !",
+  "log_error_copy_failed": "Échec de la copie de ",
+  "log_error_access_denied": "Accès refusé : ",
+  "log_error_strategy": "Erreur de stratégie : "
 }

@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
@@ -12,21 +12,24 @@ public partial class MainWindow : Window
 
         var vm = new MainViewModel();
 
-        vm.RequestAddJob = async () =>
+        // On passe des callbacks au ViewModel pour qu'il puisse
+        // demander l'ouverture d'une fenêtre sans connaître la View
+        vm.RequestAddJob = callback =>
         {
             var dialog = new AddJobWindow();
-            await dialog.ShowDialog(this);
-            return await dialog.GetResultAsync();
+            dialog.JobCreated += job => callback(job);
+            dialog.Cancelled += () => callback(null);
+            dialog.Show(this);
         };
 
-        vm.RequestSettings = async current =>
+        vm.RequestSettings = (current, callback) =>
         {
             var dialog = new SettingsWindow(current);
-            await dialog.ShowDialog(this);
-            return await dialog.GetResultAsync();
+            dialog.Saved += settings => callback(settings);
+            dialog.Cancelled += () => callback(null);
+            dialog.Show(this);
         };
 
         DataContext = vm;
     }
 }
-

@@ -19,6 +19,16 @@ namespace EasySaveWpf
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 return;
 
+            // Si la source est un fichier unique, on le copie directement
+            if (File.Exists(job.SourceDir))
+            {
+                if (!canCopyNextFile())
+                    throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+
+                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied);
+                return;
+            }
+
             if (!Directory.Exists(job.TargetDir))
                 Directory.CreateDirectory(job.TargetDir);
 
@@ -89,14 +99,45 @@ namespace EasySaveWpf
             }
         }
 
+        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied)
+        {
+            FileInfo fileInfo = new FileInfo(sourcePath);
+            if (!Directory.Exists(targetDir))
+                Directory.CreateDirectory(targetDir);
+
+            string targetPath = Path.Combine(targetDir, fileInfo.Name);
+
+            // Différentiel : on copie uniquement si le fichier cible n'existe pas ou est plus ancien
+            if (!File.Exists(targetPath) || fileInfo.LastWriteTime > File.GetLastWriteTime(targetPath))
+            {
+                Stopwatch sw = Stopwatch.StartNew();
+                File.Copy(sourcePath, targetPath, true);
+                sw.Stop();
+
+                long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
+                onFileCopied(sourcePath, targetPath, fileInfo.Length);
+
+                logService.Save(new LogEntry
+                {
+                    BackupName = job.Name ?? string.Empty,
+                    SourceFilePath = sourcePath,
+                    TargetFilePath = targetPath,
+                    FileSize = fileInfo.Length,
+                    FileTransferTimeMs = sw.ElapsedMilliseconds,
+                    EncryptionTimeMs = encryptionTime,
+                    Event = "FileCopied"
+                });
+            }
+        }
+
         private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
         {
-            bool shouldEncrypt = settings.EncryptedExtensions
-                .Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase));
-
-            return shouldEncrypt
-                ? cryptoService.Encrypt(targetPath, settings.EncryptionKey)
-                : 0;
+            foreach (string ext in settings.EncryptedExtensions)
+            {
+                if (ext.Equals(extension, StringComparison.OrdinalIgnoreCase))
+                    return cryptoService.Encrypt(targetPath, settings.EncryptionKey);
+            }
+            return 0;
         }
     }
 }

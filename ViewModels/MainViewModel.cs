@@ -35,13 +35,16 @@ public class MainViewModel : ViewModelBase
 
     public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
 
-    // Callbacks set by the main window to show modal dialogs
-    public Func<Task<BackupJob?>>? RequestAddJob { get; set; }
-    public Func<AppSettings, Task<AppSettings?>>? RequestSettings { get; set; }
+    // Callbacks définis par la MainWindow pour ouvrir les fenêtres de dialogue
+    // Le callback reçoit une Action à appeler quand l'utilisateur valide ou annule
+    public Action<Action<BackupJob?>>? RequestAddJob { get; set; }
+    public Action<AppSettings, Action<AppSettings?>>? RequestSettings { get; set; }
 
-    public ICommand RunAllCommand { get; }
+    public Command RunAllCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     public ICommand AddJobCommand { get; }
+
+    private bool _isRunningAll = false;
 
     public MainViewModel()
     {
@@ -69,9 +72,9 @@ public class MainViewModel : ViewModelBase
 
         FillJobCards();
 
-        RunAllCommand = new AsyncCommand(RunAllAsync);
-        AddJobCommand = new AsyncCommand(AddJobAsync);
-        OpenSettingsCommand = new AsyncCommand(OpenSettingsAsync);
+        RunAllCommand = new Command(RunAll, () => !_isRunningAll);
+        AddJobCommand = new Command(ShowAddJobDialog);
+        OpenSettingsCommand = new Command(ShowSettingsDialog);
     }
 
     private void FillJobCards()
@@ -86,27 +89,38 @@ public class MainViewModel : ViewModelBase
     {
         return new BackupJobViewModel(
             job,
-            onRun: RunCardAsync,
+            onRun: RunCard,
             onDelete: DeleteCard);
     }
 
-    private async Task RunCardAsync(BackupJobViewModel card)
+    // Lance le backup d'une carte sur un thread de fond
+    // pour ne pas bloquer le thread UI pendant la copie des fichiers
+    private void RunCard(BackupJobViewModel card)
     {
-        // Prevent the user from starting the same job multiple times concurrently
         card.IsRunning = true;
         card.Status = BackupStatus.In_Progress;
         card.Progression = 0;
 
-        try
+        int index = _jobs.IndexOf(card.Job);
+
+        Thread thread = new Thread(() =>
         {
-            int index = _jobs.IndexOf(card.Job);
-            // Execute the heavy backup process in a background thread to keep the UI responsive
-            await Task.Run(() => RunJobByIndex(index));
-        }
-        finally
-        {
-            card.IsRunning = false;
-        }
+            try
+            {
+                RunJobByIndex(index);
+            }
+            catch (Exception) { }
+            finally
+            {
+                // On repasse sur le thread UI pour modifier les propriétés liées à l'interface
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    card.IsRunning = false;
+                });
+            }
+        });
+        thread.IsBackground = true;
+        thread.Start();
     }
 
     private void DeleteCard(BackupJobViewModel card)
@@ -118,44 +132,59 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    private async Task RunAllAsync()
+    // Lance tous les backups sur un thread de fond
+    private void RunAll()
     {
-        // Lock all cards to prevent concurrent executions
-        foreach (var card in Jobs)
+        _isRunningAll = true;
+        RunAllCommand.RaiseCanExecuteChanged();
+
+        foreach (BackupJobViewModel card in Jobs)
             card.IsRunning = true;
 
-        try
+        Thread thread = new Thread(() =>
         {
-            await Task.Run(() => RunAllJobs());
-        }
-        finally
-        {
-            foreach (var card in Jobs)
-                card.IsRunning = false;
-        }
+            try
+            {
+                RunAllJobs();
+            }
+            catch (Exception) { }
+            finally
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _isRunningAll = false;
+                    RunAllCommand.RaiseCanExecuteChanged();
+                    foreach (BackupJobViewModel card in Jobs)
+                        card.IsRunning = false;
+                });
+            }
+        });
+        thread.IsBackground = true;
+        thread.Start();
     }
 
-    private async Task AddJobAsync()
+    // Ouvre la fenêtre d'ajout de job via un callback
+    // Le callback sera appelé quand l'utilisateur confirme ou annule
+    private void ShowAddJobDialog()
     {
-        if (RequestAddJob == null) return;
-
-        BackupJob? newJob = await RequestAddJob.Invoke();
-        if (newJob == null) return;
-
-        if (AddJob(newJob))
-            Jobs.Add(CreateCard(newJob));
+        RequestAddJob?.Invoke(newJob =>
+        {
+            if (newJob == null) return;
+            if (AddJob(newJob))
+                Jobs.Add(CreateCard(newJob));
+        });
     }
 
-    private async Task OpenSettingsAsync()
+    // Ouvre la fenêtre des paramètres via un callback
+    private void ShowSettingsDialog()
     {
-        if (RequestSettings == null) return;
-
         AppSettings current = GetSettings();
-        AppSettings? updated = await RequestSettings.Invoke(current);
-        if (updated == null) return;
-
-        ApplySettings(updated);
-        SetField(ref _selectedLanguage, updated.Language, nameof(SelectedLanguage));
+        RequestSettings?.Invoke(current, updated =>
+        {
+            if (updated == null) return;
+            ApplySettings(updated);
+            SetField(ref _selectedLanguage, updated.Language, nameof(SelectedLanguage));
+        });
     }
 
     private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
@@ -372,14 +401,13 @@ public class MainViewModel : ViewModelBase
         return result;
     }
 
-    // Parses a user input string (e.g. "1-3" or "1;4;5") into a list of 0-based job indices
+    // Transforme une saisie utilisateur ("1-3" ou "1;4;5") en liste d'indices 0-based
     private static List<int> ParseIndices(string input, int maxCount)
     {
         var indices = new List<int>();
 
         if (input.Contains('-'))
         {
-            // Handle range format like "1-5"
             string[] parts = input.Split('-');
             if (parts.Length == 2)
             {
@@ -399,7 +427,6 @@ public class MainViewModel : ViewModelBase
         }
         else if (input.Contains(';'))
         {
-            // Handle list format like "1;3;4"
             string[] parts = input.Split(';');
             foreach (string part in parts)
             {

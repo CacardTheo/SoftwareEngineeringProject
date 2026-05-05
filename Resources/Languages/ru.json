@@ -59,5 +59,11 @@
   "gui_encrypted_extensions": "Расширения для шифрования (напр. .txt, по одному на строку)",
   "gui_encryption_key": "Ключ шифрования",
   "gui_save": "Сохранить",
-  "gui_current_file": "Текущий файл:"
+  "gui_current_file": "Текущий файл:",
+  "gui_language_name": "Русский",
+  "log_error_missing_paths": "Отсутствует исходный или целевой путь в задаче.",
+  "log_error_source_not_found": "Исходный путь не существует!",
+  "log_error_copy_failed": "Не удалось скопировать ",
+  "log_error_access_denied": "Отказано в доступе: ",
+  "log_error_strategy": "Ошибка стратегии: "
 }

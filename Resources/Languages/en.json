@@ -60,5 +60,11 @@
   "gui_encrypted_extensions": "Encrypted File Extensions (one per line, e.g. .txt)",
   "gui_encryption_key": "Encryption Key",
   "gui_save": "Save",
-  "gui_current_file": "Current file:"
+  "gui_current_file": "Current file:",
+  "gui_language_name": "English",
+  "log_error_missing_paths": "Missing source or target path in BackupJob.",
+  "log_error_source_not_found": "Source path does not exist!",
+  "log_error_copy_failed": "Failed to copy ",
+  "log_error_access_denied": "Access denied: ",
+  "log_error_strategy": "Strategy error: "
 }

@@ -54,7 +54,10 @@ public class BackupProcessor
         string[] files;
         try
         {
-            files = Directory.GetFiles(job.SourceDir ?? string.Empty, "*.*", SearchOption.AllDirectories);
+            if (File.Exists(job.SourceDir))
+                files = new string[] { job.SourceDir };
+            else
+                files = Directory.GetFiles(job.SourceDir ?? string.Empty, "*.*", SearchOption.AllDirectories);
         }
         catch
         {

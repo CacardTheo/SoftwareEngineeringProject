@@ -46,11 +46,10 @@ public class BackupJobViewModel : ViewModelBase
         set
         {
             SetField(ref _isRunning, value);
-            OnPropertyChanged(nameof(IsNotRunning));
+            RunCommand.RaiseCanExecuteChanged();
+            DeleteCommand.RaiseCanExecuteChanged();
         }
     }
-
-    public bool IsNotRunning => !_isRunning;
 
     public bool HasBeenRun  => Status != BackupStatus.Inactive;
     public bool IsInProgress => Status == BackupStatus.In_Progress;
@@ -114,14 +113,14 @@ public class BackupJobViewModel : ViewModelBase
         }
     }
 
-    public ICommand RunCommand { get; }
-    public ICommand DeleteCommand { get; }
+    public Command RunCommand { get; }
+    public Command DeleteCommand { get; }
 
-    public BackupJobViewModel(BackupJob job, Func<BackupJobViewModel, Task> onRun, Action<BackupJobViewModel> onDelete)
+    public BackupJobViewModel(BackupJob job, Action<BackupJobViewModel> onRun, Action<BackupJobViewModel> onDelete)
     {
         Job = job;
 
-        RunCommand = new AsyncCommand(
+        RunCommand = new Command(
             () => onRun(this),
             () => !IsRunning);
 

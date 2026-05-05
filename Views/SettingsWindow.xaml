@@ -28,7 +28,7 @@
 
         <!-- Language -->
         <StackPanel Spacing="4">
-          <TextBlock Text="{Binding LangMgr[gui_language]}" Foreground="#9399B2" FontSize="12"/>
+          <TextBlock Text="{Binding LanguageSelectorLabel}" Foreground="#9399B2" FontSize="12"/>
           <ComboBox ItemsSource="{Binding AvailableLanguages}"
                     SelectedItem="{Binding Language}"
                     Background="#2A2A3E" Foreground="#CDD6F4" HorizontalAlignment="Stretch"/>

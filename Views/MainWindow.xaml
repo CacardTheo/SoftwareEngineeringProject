@@ -97,12 +97,10 @@
                   </StackPanel>
                   <Button Grid.Column="1" Content="&#x25BA;"
                           Command="{Binding RunCommand}"
-                          IsEnabled="{Binding IsNotRunning}"
                           Classes="accent icon"
                           Margin="0,0,6,0"/>
                   <Button Grid.Column="2" Content="&#x2715;"
                           Command="{Binding DeleteCommand}"
-                          IsEnabled="{Binding IsNotRunning}"
                           Classes="danger icon"/>
                 </Grid>
 
