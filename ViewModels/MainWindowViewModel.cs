@@ -11,26 +11,12 @@ public class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<JobCardViewModel> Jobs { get; } = new();
     private LanguageManager LangMgr => LanguageManager.GetInstance();
-    public string LabelTitle    => LangMgr.GetText("gui_title");
-    public string LabelAddJob   => LangMgr.GetText("gui_add_job");
-    public string LabelRunAll   => LangMgr.GetText("gui_run_all");
+    public string LabelTitle => LangMgr.GetText("gui_title");
+    public string LabelAddJob => LangMgr.GetText("gui_add_job");
+    public string LabelRunAll => LangMgr.GetText("gui_run_all");
     public string LabelSettings => LangMgr.GetText("gui_settings");
 
-    private string _selectedLanguage = "en";
-    public string SelectedLanguage
-    {
-        get => _selectedLanguage;
-        set
-        {
-            if (SetField(ref _selectedLanguage, value))
-            {
-                _mainViewModel.ChangeLanguage(value);
-                RefreshLabels();
-            }
-        }
-    }
 
-    public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
 
     // Callbacks set by the main window to show modal dialogs
     public Func<Task<BackupJob?>>? RequestAddJob { get; set; }
@@ -47,7 +33,6 @@ public class MainWindowViewModel : ViewModelBase
         _mainViewModel.JobProgressChanged += OnJobProgressChanged;
 
         AppSettings settings = _mainViewModel.GetSettings();
-        _selectedLanguage = settings.Language;
 
         foreach (var job in _mainViewModel.GetJobs())
             Jobs.Add(CreateCard(job));
@@ -126,7 +111,6 @@ public class MainWindowViewModel : ViewModelBase
         _mainViewModel.SetEncryptionKey(updated.EncryptionKey);
         _mainViewModel.ChangeLanguage(updated.Language);
 
-        SelectedLanguage = updated.Language;
         RefreshLabels();
     }
 

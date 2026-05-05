@@ -31,14 +31,10 @@
 
     <!-- Top bar -->
     <Border DockPanel.Dock="Top" Background="#16162A" Padding="20,12">
-      <Grid ColumnDefinitions="*,Auto,Auto">
+      <Grid ColumnDefinitions="*,Auto">
         <TextBlock Grid.Column="0" Text="{Binding LabelTitle}" FontSize="22" FontWeight="Bold"
                    Foreground="#CDD6F4" VerticalAlignment="Center"/>
-        <ComboBox Grid.Column="1" Margin="0,0,12,0"
-                  ItemsSource="{Binding AvailableLanguages}"
-                  SelectedItem="{Binding SelectedLanguage}"
-                  Width="70" Background="#2A2A3E" Foreground="#CDD6F4"/>
-        <Button Grid.Column="2" Content="{Binding LabelSettings}"
+        <Button Grid.Column="1" Content="{Binding LabelSettings}"
                 Command="{Binding OpenSettingsCommand}"
                 Classes="accent"/>
       </Grid>

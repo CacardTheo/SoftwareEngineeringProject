@@ -1,3 +1,4 @@
+using EasySaveWpf.ViewModels;
 namespace EasySaveWpf;
 
 public class AppSettings

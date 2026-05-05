@@ -51,7 +51,7 @@ public class SettingsViewModel : ViewModelBase
         set => SetField(ref _encryptionKey, value);
     }
 
-    public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
+    public List<string> AvailableLanguages => LangMgr.GetAvailableLanguages();
 
     public List<OutputFormat> AvailableFormats { get; } = new()
     {
