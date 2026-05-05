@@ -84,8 +84,8 @@ public class SettingsViewModel : ViewModelBase
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
         _encryptionKey = current.EncryptionKey;
 
-        SaveCommand = new RelayCommand(Save);
-        CancelCommand = new RelayCommand(() => Cancelled?.Invoke());
+        SaveCommand = new Command(Save);
+        CancelCommand = new Command(() => Cancelled?.Invoke());
     }
 
     public void RefreshLocalization()

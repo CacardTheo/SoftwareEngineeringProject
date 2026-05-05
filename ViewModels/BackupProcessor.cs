@@ -8,25 +8,25 @@ public class BackupProcessor
     private readonly StateManager _stateManager;
     private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
     private readonly CryptoSoftService _cryptoSoftService;
-    private readonly Func<AppSettings> _settingsProvider;
+    private readonly AppSettings _settings;
 
-    public event EventHandler<BackupProgressEventArgs>? ProgressChanged;
+    public event Action<string, BackupStatus, int, string, bool>? ProgressChanged;
 
     public BackupProcessor(
         StateManager stateManager,
         BusinessSoftwareMonitor businessSoftwareMonitor,
         CryptoSoftService cryptoSoftService,
-        Func<AppSettings> settingsProvider)
+        AppSettings settings)
     {
         _stateManager = stateManager;
         _businessSoftwareMonitor = businessSoftwareMonitor;
         _cryptoSoftService = cryptoSoftService;
-        _settingsProvider = settingsProvider;
+        _settings = settings;
     }
 
     public bool Execute(BackupJob job)
     {
-        AppSettings settings = _settingsProvider();
+        AppSettings settings = _settings;
         _stateManager.SetFormat(settings.StateFormat);
         var logService = new LogService(settings.LogFormat);
 
@@ -37,12 +37,19 @@ public class BackupProcessor
             return false;
         }
 
-        IBackupStrategy strategy = job.Type switch
+        IBackupStrategy strategy;
+
+        switch (job.Type)
         {
-            BackupType.Full => new FullBackupStrategy(),
-            BackupType.Differential => new DifferentialBackupStrategy(),
-            _ => throw new ArgumentException($"Unknown backup type: {job.Type}")
-        };
+            case BackupType.Full:
+                strategy = new FullBackupStrategy();
+                break;
+            case BackupType.Differential:
+                strategy = new DifferentialBackupStrategy();
+                break;
+            default:
+                throw new ArgumentException($"Unknown backup type: {job.Type}");
+        }
 
         string[] files;
         try
@@ -55,7 +62,12 @@ public class BackupProcessor
         }
 
         int totalFiles = files.Length;
-        long totalSize = files.Sum(file => new FileInfo(file).Length);
+        long totalSize = 0;
+
+        foreach (string file in files)
+        {
+            totalSize += new FileInfo(file).Length;
+        }
 
         _stateManager.UpdateJobState(new StateEntry
         {
@@ -77,38 +89,38 @@ public class BackupProcessor
         {
             long bytesCopied = 0;
             int filesCopied = 0;
+            int lastReportedProgress = -1;
 
-            var context = new BackupExecutionContext
+            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue);
+
+            void OnFileCopied(string sourceFile, string destFile, long fileSize)
             {
-                LogService = logService,
-                Settings = settings,
-                CryptoService = _cryptoSoftService,
-                OnFileCopied = (sourceFile, destFile, fileSize) =>
+                filesCopied++;
+                bytesCopied += fileSize;
+                int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+
+                _stateManager.UpdateJobState(new StateEntry
                 {
-                    filesCopied++;
-                    bytesCopied += fileSize;
-                    int progression = totalSize > 0 ? (int)((bytesCopied * 100) / totalSize) : 0;
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = sourceFile,
+                    TargetFilePath = destFile,
+                    State = BackupStatus.In_Progress,
+                    TotalFilesToCopy = totalFiles,
+                    TotalFilesSize = totalSize,
+                    NbFilesLeftToDo = Math.Max(0, totalFiles - filesCopied),
+                    SizeRemaining = Math.Max(0, totalSize - bytesCopied),
+                    Progression = progression,
+                    LastRun = DateTime.Now
+                });
 
-                    _stateManager.UpdateJobState(new StateEntry
-                    {
-                        Name = job.Name ?? "Unnamed Job",
-                        SourceFilePath = sourceFile,
-                        TargetFilePath = destFile,
-                        State = BackupStatus.In_Progress,
-                        TotalFilesToCopy = totalFiles,
-                        TotalFilesSize = totalSize,
-                        NbFilesLeftToDo = Math.Max(0, totalFiles - filesCopied),
-                        SizeRemaining = Math.Max(0, totalSize - bytesCopied),
-                        Progression = progression,
-                        LastRun = DateTime.Now
-                    });
-
+                if (progression != lastReportedProgress && (progression % 5 == 0 || progression == 100))
+                {
+                    lastReportedProgress = progression;
                     RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
-                },
-                CanCopyNextFile = () => !IsBusinessSoftwareRunning(settings, out _)
-            };
+                }
+            }
 
-            strategy.Backup(job, context);
+            bool CanContinue() => !IsBusinessSoftwareRunning(settings, out _);
 
             _stateManager.UpdateJobState(new StateEntry
             {
@@ -127,22 +139,27 @@ public class BackupProcessor
             RaiseProgress(job.Name, BackupStatus.Ended, 100);
             return true;
         }
-        catch (InvalidOperationException ex) when (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
+        catch (InvalidOperationException ex)
         {
-            IsBusinessSoftwareRunning(settings, out string detectedProcess);
-            LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
-            RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
-
-            _stateManager.UpdateJobState(new StateEntry
+            if (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
             {
-                Name = job.Name ?? "Unnamed Job",
-                SourceFilePath = job.SourceDir ?? string.Empty,
-                TargetFilePath = job.TargetDir ?? string.Empty,
-                State = BackupStatus.Inactive,
-                LastRun = DateTime.Now
-            });
+                IsBusinessSoftwareRunning(settings, out string detectedProcess);
+                LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
+                RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
 
-            return false;
+                _stateManager.UpdateJobState(new StateEntry
+                {
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = job.SourceDir ?? string.Empty,
+                    TargetFilePath = job.TargetDir ?? string.Empty,
+                    State = BackupStatus.Inactive,
+                    LastRun = DateTime.Now
+                });
+
+                return false;
+            }
+
+            throw;
         }
         catch
         {
@@ -168,14 +185,7 @@ public class BackupProcessor
     private void RaiseProgress(string? jobName, BackupStatus status, int progression,
         string currentFile = "", bool blocked = false)
     {
-        ProgressChanged?.Invoke(this, new BackupProgressEventArgs
-        {
-            JobName = jobName ?? string.Empty,
-            Status = status,
-            Progression = progression,
-            CurrentFile = currentFile,
-            BlockedByBusinessSoftware = blocked
-        });
+        ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked);
     }
 
     private bool IsBusinessSoftwareRunning(AppSettings settings, out string detectedProcess) =>

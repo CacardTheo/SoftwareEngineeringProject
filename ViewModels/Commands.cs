@@ -2,15 +2,26 @@ using System.Windows.Input;
 
 namespace EasySaveWpf.ViewModels;
 
-public class RelayCommand : ICommand
+public class Command : ICommand
 {
     private readonly Action<object?> _execute;
     private readonly Func<object?, bool>? _canExecute;
 
-    public RelayCommand(Action execute, Func<bool>? canExecute = null)
-        : this(_ => execute(), canExecute == null ? null : _ => canExecute()) { }
+    public Command(Action execute, Func<bool>? canExecute = null)
+    {
+        _execute = _ => execute();
 
-    public RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null)
+        if (canExecute == null)
+        {
+            _canExecute = null;
+        }
+        else
+        {
+            _canExecute = _ => canExecute();
+        }
+    }
+
+    public Command(Action<object?> execute, Func<object?, bool>? canExecute = null)
     {
         _execute = execute;
         _canExecute = canExecute;
@@ -18,21 +29,32 @@ public class RelayCommand : ICommand
 
     public event EventHandler? CanExecuteChanged;
 
-    public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+    public bool CanExecute(object? parameter)
+    {
+        if (_canExecute == null)
+            return true;
 
-    public void Execute(object? parameter) => _execute(parameter);
+        return _canExecute(parameter);
+    }
 
-    public void RaiseCanExecuteChanged() =>
+    public void Execute(object? parameter)
+    {
+        _execute(parameter);
+    }
+
+    public void RaiseCanExecuteChanged()
+    {
         CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
 }
 
-public class AsyncRelayCommand : ICommand
+public class AsyncCommand : ICommand
 {
     private readonly Func<Task> _execute;
     private readonly Func<bool>? _canExecute;
     private bool _isExecuting;
 
-    public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
+    public AsyncCommand(Func<Task> execute, Func<bool>? canExecute = null)
     {
         _execute = execute;
         _canExecute = canExecute;

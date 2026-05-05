@@ -12,9 +12,7 @@ public class SettingsManager
         string folderPath = Path.Combine(appData, "EasySave");
 
         if (!Directory.Exists(folderPath))
-        {
             Directory.CreateDirectory(folderPath);
-        }
 
         _settingsFilePath = Path.Combine(folderPath, "settings.json");
     }
@@ -24,9 +22,7 @@ public class SettingsManager
         try
         {
             if (!File.Exists(_settingsFilePath))
-            {
                 return new AppSettings();
-            }
 
             string json = File.ReadAllText(_settingsFilePath);
             return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
