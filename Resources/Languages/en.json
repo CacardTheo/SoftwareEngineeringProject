@@ -66,5 +66,8 @@
   "log_error_source_not_found": "Source path does not exist!",
   "log_error_copy_failed": "Failed to copy ",
   "log_error_access_denied": "Access denied: ",
-  "log_error_strategy": "Strategy error: "
+  "log_error_strategy": "Strategy error: ",
+  "config_jobs_saved": "Jobs saved to: ",
+  "config_save_error": "Config save error: ",
+  "config_read_error": "Config read error: "
 }

@@ -66,5 +66,8 @@
   "log_error_source_not_found": "Le chemin source n'existe pas !",
   "log_error_copy_failed": "Échec de la copie de ",
   "log_error_access_denied": "Accès refusé : ",
-  "log_error_strategy": "Erreur de stratégie : "
+  "log_error_strategy": "Erreur de stratégie : ",
+  "config_jobs_saved": "Jobs sauvegardés dans : ",
+  "config_save_error": "Erreur de sauvegarde de la config : ",
+  "config_read_error": "Erreur de lecture de la config : "
 }

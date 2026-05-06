@@ -65,5 +65,8 @@
   "log_error_source_not_found": "Исходный путь не существует!",
   "log_error_copy_failed": "Не удалось скопировать ",
   "log_error_access_denied": "Отказано в доступе: ",
-  "log_error_strategy": "Ошибка стратегии: "
+  "log_error_strategy": "Ошибка стратегии: ",
+  "config_jobs_saved": "Задачи сохранены в: ",
+  "config_save_error": "Ошибка сохранения конфигурации: ",
+  "config_read_error": "Ошибка чтения конфигурации: "
 }

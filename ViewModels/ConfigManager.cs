@@ -8,19 +8,15 @@ namespace EasySaveWpf.ViewModels
     public class ConfigManager
     {
         private readonly string _configFilePath;
+        private readonly LanguageManager _languageManager = LanguageManager.GetInstance();
 
         public ConfigManager()
         {
-            // Use AppData/Roaming/EasySave to store the configuration.
-            // This ensures the file is accessible on any server and avoids "c:\temp" or relative dev paths.
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string folderPath = Path.Combine(appData, "EasySave");
 
-            // Ensure the folder exists before trying to read/write
             if (!Directory.Exists(folderPath))
-            {
                 Directory.CreateDirectory(folderPath);
-            }
 
             _configFilePath = Path.Combine(folderPath, "backup_jobs.json");
         }
@@ -33,11 +29,11 @@ namespace EasySaveWpf.ViewModels
                 string json = JsonSerializer.Serialize(jobs, options);
                 File.WriteAllText(_configFilePath, json);
 
-                Console.WriteLine($"[CONFIG] Jobs saved successfully to: {_configFilePath}");
+                Console.WriteLine($"{_languageManager.GetText("config_jobs_saved")}{_configFilePath}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Config save error: {ex.Message}");
+                Console.WriteLine($"{_languageManager.GetText("config_save_error")}{ex.Message}");
             }
         }
 
@@ -46,18 +42,15 @@ namespace EasySaveWpf.ViewModels
             try
             {
                 if (!File.Exists(_configFilePath))
-                {
-                    // If no config exists yet, return an empty list or create a default one
-                    return new List<BackupJob>();
-                }
+                    return [];
 
                 string json = File.ReadAllText(_configFilePath);
-                return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? new List<BackupJob>();
+                return JsonSerializer.Deserialize<List<BackupJob>>(json) ?? [];
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Config read error: {ex.Message}");
-                return new List<BackupJob>();
+                Console.WriteLine($"{_languageManager.GetText("config_read_error")}{ex.Message}");
+                return [];
             }
         }
     }
