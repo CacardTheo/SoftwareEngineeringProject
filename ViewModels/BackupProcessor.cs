@@ -92,15 +92,16 @@ public class BackupProcessor
         {
             long bytesCopied = 0;
             int filesCopied = 0;
-            int lastReportedProgress = -1;
+            int lastReportedProgression = -1;
 
-            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue);
+            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue, OnBytesWritten);
 
-            void OnFileCopied(string sourceFile, string destFile, long fileSize)
+            void OnBytesWritten(string sourceFile, string destFile, long bytes)
             {
-                filesCopied++;
-                bytesCopied += fileSize;
+                bytesCopied += bytes;
                 int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+                if (progression == lastReportedProgression) return;
+                lastReportedProgression = progression;
 
                 _stateManager.UpdateJobState(new StateEntry
                 {
@@ -115,12 +116,29 @@ public class BackupProcessor
                     Progression = progression,
                     LastRun = DateTime.Now
                 });
+                RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
+            }
 
-                if (progression != lastReportedProgress && (progression % 5 == 0 || progression == 100))
+            void OnFileCopied(string sourceFile, string destFile, long fileSize)
+            {
+                filesCopied++;
+                int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+                lastReportedProgression = progression;
+
+                _stateManager.UpdateJobState(new StateEntry
                 {
-                    lastReportedProgress = progression;
-                    RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
-                }
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = sourceFile,
+                    TargetFilePath = destFile,
+                    State = BackupStatus.In_Progress,
+                    TotalFilesToCopy = totalFiles,
+                    TotalFilesSize = totalSize,
+                    NbFilesLeftToDo = Math.Max(0, totalFiles - filesCopied),
+                    SizeRemaining = Math.Max(0, totalSize - bytesCopied),
+                    Progression = progression,
+                    LastRun = DateTime.Now
+                });
+                RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
             }
 
             bool CanContinue() => !IsBusinessSoftwareRunning(settings, out _);

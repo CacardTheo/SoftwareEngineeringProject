@@ -3,7 +3,7 @@
         x:Class="EasySaveWpf.Views.MainWindow"
         Title="EasySave v2.0"
         Width="900" Height="600"
-        MinWidth="700" MinHeight="450"
+        MinWidth="800" MinHeight="450"
         Background="#1E1E2E"
         WindowStartupLocation="CenterScreen">
 
@@ -79,8 +79,8 @@
     </Border>
 
     <!-- Job list -->
-    <ScrollViewer Padding="20,16">
-      <ItemsControl ItemsSource="{Binding Jobs}">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Jobs}" Margin="20,16,20,16">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Border Background="#2A2A3E" CornerRadius="8" Padding="16" Margin="0,0,0,10">
@@ -106,12 +106,14 @@
 
                 <!-- paths -->
                 <StackPanel>
-                  <TextBlock FontSize="12" Foreground="#6C7086">
+                  <TextBlock FontSize="12" Foreground="#6C7086"
+                             TextTrimming="CharacterEllipsis">
                     <Run Text="{Binding LangMgr[gui_from]}"/>
                     <Run Text=" "/>
                     <Run Text="{Binding SourceDir}"/>
                   </TextBlock>
-                  <TextBlock FontSize="12" Foreground="#6C7086" Margin="0,2,0,0">
+                  <TextBlock FontSize="12" Foreground="#6C7086" Margin="0,2,0,0"
+                             TextTrimming="CharacterEllipsis">
                     <Run Text="{Binding LangMgr[gui_to]}"/>
                     <Run Text=" "/>
                     <Run Text="{Binding TargetDir}"/>

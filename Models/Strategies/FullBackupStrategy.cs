@@ -14,7 +14,7 @@ namespace EasySaveWpf
             _languageManager = LanguageManager.GetInstance();
         }
 
-        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile)
+        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
             {
@@ -36,7 +36,7 @@ namespace EasySaveWpf
                     if (!canCopyNextFile())
                         throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
-                    CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied);
+                    CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten);
                     return;
                 }
 
@@ -65,7 +65,7 @@ namespace EasySaveWpf
                         string? dir = Path.GetDirectoryName(targetPath);
                         if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-                        FileHelper.CopyFile(filePath, targetPath);
+                        FileHelper.CopyFile(filePath, targetPath, onBytesWritten);
                         sw.Stop();
 
                         long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
@@ -128,7 +128,7 @@ namespace EasySaveWpf
             }
         }
 
-        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied)
+        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action<string, string, long>? onBytesWritten = null)
         {
             FileInfo fileInfo = new FileInfo(sourcePath);
             if (!Directory.Exists(targetDir))
@@ -137,7 +137,7 @@ namespace EasySaveWpf
             string targetPath = Path.Combine(targetDir, fileInfo.Name);
 
             Stopwatch sw = Stopwatch.StartNew();
-            FileHelper.CopyFile(sourcePath, targetPath);
+            FileHelper.CopyFile(sourcePath, targetPath, onBytesWritten);
             sw.Stop();
 
             long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);

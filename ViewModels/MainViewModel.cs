@@ -189,7 +189,7 @@ public class MainViewModel : ViewModelBase
 
     private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
+        Dispatcher.UIThread.Invoke(() =>
         {
             UpdateCardProgress(jobName, status, progression, currentFile, blocked);
         });
