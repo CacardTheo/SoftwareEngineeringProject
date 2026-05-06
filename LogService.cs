@@ -22,30 +22,21 @@ namespace EasyLog
 
         public void Save(LogEntry entry)
         {
-            try
+            if (!Directory.Exists(_logFolder))
+                Directory.CreateDirectory(_logFolder);
+
+            string filePath = Path.Combine(_logFolder, $"{DateTime.Now:yyyy-MM-dd}.{_serializer.FileExtension}");
+
+            List<LogEntry> logs = new List<LogEntry>();
+
+            if (File.Exists(filePath))
             {
-                if (!Directory.Exists(_logFolder))
-                    Directory.CreateDirectory(_logFolder);
-
-                string filePath = Path.Combine(_logFolder, $"{DateTime.Now:yyyy-MM-dd}.{_serializer.FileExtension}");
-
-                List<LogEntry> logs = new List<LogEntry>();
-
-                if (File.Exists(filePath))
-                {
-                    try { logs = _serializer.Load(filePath); }
-                    catch { logs = new List<LogEntry>(); }
-                }
-
-                logs.Add(entry);
-                _serializer.Save(logs, filePath);
-
-                Console.WriteLine($"[LOG] Entry added to: {filePath}");
+                try { logs = _serializer.Load(filePath); }
+                catch { logs = new List<LogEntry>(); }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[LOG ERROR] {ex.Message}");
-            }
+
+            logs.Add(entry);
+            _serializer.Save(logs, filePath);
         }
     }
 }
