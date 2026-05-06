@@ -65,7 +65,7 @@ namespace EasySaveWpf
                         string? dir = Path.GetDirectoryName(targetPath);
                         if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-                        File.Copy(filePath, targetPath, true);
+                        FileHelper.CopyFile(filePath, targetPath);
                         sw.Stop();
 
                         long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
@@ -137,7 +137,7 @@ namespace EasySaveWpf
             string targetPath = Path.Combine(targetDir, fileInfo.Name);
 
             Stopwatch sw = Stopwatch.StartNew();
-            File.Copy(sourcePath, targetPath, true);
+            FileHelper.CopyFile(sourcePath, targetPath);
             sw.Stop();
 
             long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);

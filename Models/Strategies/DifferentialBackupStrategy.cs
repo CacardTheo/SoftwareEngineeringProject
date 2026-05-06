@@ -60,7 +60,7 @@ namespace EasySaveWpf
                         if (targetDirectory != null && !Directory.Exists(targetDirectory))
                             Directory.CreateDirectory(targetDirectory);
 
-                        File.Copy(file.FullName, targetFilePath, true);
+                        FileHelper.CopyFile(file.FullName, targetFilePath);
                         stopwatch.Stop();
 
                         long encryptionTime = TryEncrypt(targetFilePath, file.Extension, cryptoService, settings);
@@ -111,7 +111,7 @@ namespace EasySaveWpf
             if (!File.Exists(targetPath) || fileInfo.LastWriteTime > File.GetLastWriteTime(targetPath))
             {
                 Stopwatch sw = Stopwatch.StartNew();
-                File.Copy(sourcePath, targetPath, true);
+                FileHelper.CopyFile(sourcePath, targetPath);
                 sw.Stop();
 
                 long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
