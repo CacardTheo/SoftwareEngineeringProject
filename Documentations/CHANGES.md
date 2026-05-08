@@ -156,3 +156,231 @@ more room to the progress bar and file paths.
 6. Repeat until the file is fully copied
 7. FileHelper finishes the file → OnFileCopied → file counter updated
 ```
+
+---
+
+## Error handling — displaying errors in the UI and writing them to logs
+
+### The original problem
+
+When a fatal error occurred during a backup (for example: the source directory
+doesn't exist, the paths in the job are empty, or the OS refuses access),
+the backup strategies would print a message to the console and then silently
+`return` without throwing an exception.
+
+Because they returned normally, `BackupProcessor` had no way to know something
+went wrong. It assumed the backup had succeeded and would:
+- Set the job status to `Ended`
+- Set the progression to `100%`
+- Fire `ProgressChanged` with `BackupStatus.Ended`
+
+The UI showed the job as successfully completed, even though nothing was copied.
+No log entry was written either, so there was no trace of the failure.
+
+---
+
+### Fix 1 — Strategies throw exceptions instead of returning silently
+
+In `FullBackupStrategy.cs` and `DifferentialBackupStrategy.cs`, every silent
+`return` path was replaced with a typed exception:
+
+```csharp
+// Before:
+if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
+{
+    Console.WriteLine(_languageManager.GetText("log_error_missing_paths"));
+    return; // BackupProcessor never knows this happened
+}
+
+// After:
+if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
+    throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
+```
+
+The full mapping of errors to exception types:
+
+| Situation | Exception thrown |
+|---|---|
+| Source or target path is null/empty | `ArgumentException` |
+| Source path does not exist on disk | `DirectoryNotFoundException` |
+| OS won't let us list the directory contents | `IOException` |
+| OS refuses access to a file or directory | `UnauthorizedAccessException` |
+
+The `UnauthorizedAccessException` catch in `FullBackupStrategy` previously also
+called `logService.Save()` directly. That call was removed because
+`BackupProcessor` now centralizes all fatal error logging (see Fix 2).
+
+---
+
+### Fix 2 — BackupProcessor centralizes all fatal error logging
+
+`BackupProcessor`'s generic `catch` block was changed from a bare `catch` to
+`catch (Exception ex)`, which gives access to the exception object.
+A `logService.Save()` call was added inside it, so every fatal exception —
+regardless of where it was thrown in the strategy — gets a log entry:
+
+```csharp
+catch (Exception ex)
+{
+    _stateManager.UpdateJobState(new StateEntry
+    {
+        Name = job.Name ?? "Unnamed Job",
+        State = BackupStatus.Error,
+        Progression = 0,
+        // ...
+    });
+
+    logService.Save(new LogEntry
+    {
+        BackupName = job.Name ?? string.Empty,
+        SourceFilePath = job.SourceDir ?? string.Empty,
+        TargetFilePath = string.Empty,
+        FileSize = 0,
+        FileTransferTimeMs = -1,  // -1 signals "failed, not a real duration"
+        EncryptionTimeMs = 0,
+        Event = $"Error:{ex.GetType().Name}:{ex.Message}"
+    });
+
+    RaiseProgress(job.Name, BackupStatus.Error, 0, errorMessage: ex.Message);
+    throw; // re-throw so the calling thread can handle it too
+}
+```
+
+This means any fatal exception automatically produces:
+1. A state update set to `BackupStatus.Error` with `Progression = 0`
+2. A log entry formatted as `Error:ExceptionType:message`
+3. A UI notification carrying the error message text
+
+---
+
+### Fix 3 — The ProgressChanged event carries the error message
+
+`ProgressChanged` previously had 5 parameters.
+A 6th `string errorMessage` parameter was added at the end:
+
+```csharp
+// Before:
+public event Action<string, BackupStatus, int, string, bool>? ProgressChanged;
+
+// After:
+public event Action<string, BackupStatus, int, string, bool, string>? ProgressChanged;
+```
+
+The `RaiseProgress` helper was extended the same way:
+
+```csharp
+private void RaiseProgress(string? jobName, BackupStatus status, int progression,
+    string currentFile = "", bool blocked = false, string errorMessage = "")
+{
+    ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked, errorMessage);
+}
+```
+
+The error message travels through this chain without any transformation:
+
+```
+BackupProcessor.catch(Exception ex)
+  → RaiseProgress(errorMessage: ex.Message)
+    → ProgressChanged.Invoke(..., ex.Message)
+      → MainViewModel.OnJobProgressChanged(..., errorMessage)
+        → MainViewModel.UpdateCardProgress(..., errorMessage)
+          → BackupJobViewModel.ApplyProgress(..., errorMessage)
+            → BackupJobViewModel.ErrorMessage (property)
+              → HasError (computed property)
+                → MainWindow.xaml TextBlock (IsVisible="{Binding HasError}")
+```
+
+---
+
+### Fix 4 — BackupJobViewModel: ErrorMessage property and HasError computed property
+
+Two members were added to `BackupJobViewModel`:
+
+```csharp
+private string _errorMessage = string.Empty;
+
+public string ErrorMessage
+{
+    get => _errorMessage;
+    set
+    {
+        if (SetField(ref _errorMessage, value))
+            OnPropertyChanged(nameof(HasError)); // HasError depends on this value
+    }
+}
+
+public bool HasError => Status == BackupStatus.Error && !string.IsNullOrEmpty(_errorMessage);
+```
+
+`HasError` is a computed property: it returns `true` only when the status is
+`Error` AND there is a non-empty error message. This prevents a stale red message
+from showing if the job somehow enters Error status without a message.
+
+The `Status` setter was also updated to notify `HasError`, because `HasError`
+depends on the status value:
+
+```csharp
+set
+{
+    SetField(ref _status, value);
+    OnPropertyChanged(nameof(StatusText));
+    OnPropertyChanged(nameof(StatusColor));
+    OnPropertyChanged(nameof(HasBeenRun));
+    OnPropertyChanged(nameof(IsInProgress));
+    OnPropertyChanged(nameof(HasError)); // added
+}
+```
+
+`ApplyProgress` was extended to accept and set the error message:
+
+```csharp
+public void ApplyProgress(string jobName, BackupStatus status, int progression,
+    string currentFile, bool blocked, string errorMessage = "")
+{
+    Status = status;
+    Progression = Math.Max(0, progression);
+    BlockedByBusinessSoftware = blocked;
+    if (!string.IsNullOrEmpty(currentFile))
+        CurrentFile = currentFile;
+    ErrorMessage = status == BackupStatus.Error ? errorMessage : string.Empty;
+    // If the job is not in error state, clear any previous error message
+}
+```
+
+---
+
+### Fix 5 — MainWindow.xaml: error TextBlock in the job card
+
+A new `TextBlock` was added inside each job card in the DataTemplate,
+placed after the "blocked by business software" warning:
+
+```xml
+<!-- error message -->
+<TextBlock IsVisible="{Binding HasError}"
+           Text="{Binding ErrorMessage}"
+           Foreground="#F44336" FontSize="12" Margin="0,6,0,0"
+           TextWrapping="Wrap"/>
+```
+
+- `IsVisible="{Binding HasError}"` — the block is hidden when there is no error
+- `Text="{Binding ErrorMessage}"` — shows the raw exception message
+- `Foreground="#F44336"` — red, consistent with the error status color
+- `TextWrapping="Wrap"` — long error messages wrap inside the card instead of overflowing
+
+---
+
+### Full error flow summary
+
+```
+1. Strategy detects a fatal condition (missing path, source not found, access denied...)
+2. Strategy throws a typed exception (ArgumentException, DirectoryNotFoundException, etc.)
+3. BackupProcessor.catch(Exception ex) intercepts it
+4. State file updated → BackupStatus.Error, Progression = 0
+5. Log file entry written → Event = "Error:ExceptionType:message"
+6. RaiseProgress fires with BackupStatus.Error and the error message string
+7. MainViewModel receives it on the background thread
+8. Dispatcher.UIThread.Invoke switches to the UI thread
+9. BackupJobViewModel.ApplyProgress sets ErrorMessage and Status = Error
+10. HasError becomes true → red TextBlock appears in the job card
+11. Exception is re-thrown → RunCard/RunAll catch it silently to keep the UI alive
+```

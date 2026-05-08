@@ -146,6 +146,12 @@
                            Text="{Binding LangMgr[gui_blocked_msg]}"
                            Foreground="#FF9800" FontSize="12" Margin="0,6,0,0"/>
 
+                <!-- error message -->
+                <TextBlock IsVisible="{Binding HasError}"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="#F44336" FontSize="12" Margin="0,6,0,0"
+                           TextWrapping="Wrap"/>
+
               </StackPanel>
             </Border>
           </DataTemplate>

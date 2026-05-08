@@ -187,21 +187,21 @@ public class MainViewModel : ViewModelBase
         });
     }
 
-    private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked, string errorMessage)
     {
         Dispatcher.UIThread.Invoke(() =>
         {
-            UpdateCardProgress(jobName, status, progression, currentFile, blocked);
+            UpdateCardProgress(jobName, status, progression, currentFile, blocked, errorMessage);
         });
     }
 
-    private void UpdateCardProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    private void UpdateCardProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked, string errorMessage)
     {
         foreach (BackupJobViewModel card in Jobs)
         {
             if (card.Name == jobName)
             {
-                card.ApplyProgress(jobName, status, progression, currentFile, blocked);
+                card.ApplyProgress(jobName, status, progression, currentFile, blocked, errorMessage);
                 break;
             }
         }

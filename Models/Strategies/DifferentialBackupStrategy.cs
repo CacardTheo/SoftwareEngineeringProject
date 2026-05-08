@@ -17,7 +17,10 @@ namespace EasySaveWpf
         public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
-                return;
+                throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
+
+            if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
+                throw new DirectoryNotFoundException(_languageManager.GetText("log_error_source_not_found"));
 
             // Si la source est un fichier unique, on le copie directement
             if (File.Exists(job.SourceDir))
@@ -40,8 +43,7 @@ namespace EasySaveWpf
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{_languageManager.GetText("error_finding_files")}{ex.Message}");
-                return;
+                throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
             }
 
             foreach (FileInfo file in files)

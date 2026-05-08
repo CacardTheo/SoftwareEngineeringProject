@@ -10,7 +10,7 @@ public class BackupProcessor
     private readonly CryptoSoftService _cryptoSoftService;
     private readonly AppSettings _settings;
 
-    public event Action<string, BackupStatus, int, string, bool>? ProgressChanged;
+    public event Action<string, BackupStatus, int, string, bool, string>? ProgressChanged;
 
     public BackupProcessor(
         StateManager stateManager,
@@ -182,7 +182,7 @@ public class BackupProcessor
 
             throw;
         }
-        catch
+        catch (Exception ex)
         {
             _stateManager.UpdateJobState(new StateEntry
             {
@@ -198,15 +198,26 @@ public class BackupProcessor
                 LastRun = DateTime.Now
             });
 
-            RaiseProgress(job.Name, BackupStatus.Error, 0);
+            logService.Save(new LogEntry
+            {
+                BackupName = job.Name ?? string.Empty,
+                SourceFilePath = job.SourceDir ?? string.Empty,
+                TargetFilePath = string.Empty,
+                FileSize = 0,
+                FileTransferTimeMs = -1,
+                EncryptionTimeMs = 0,
+                Event = $"Error:{ex.GetType().Name}:{ex.Message}"
+            });
+
+            RaiseProgress(job.Name, BackupStatus.Error, 0, errorMessage: ex.Message);
             throw;
         }
     }
 
     private void RaiseProgress(string? jobName, BackupStatus status, int progression,
-        string currentFile = "", bool blocked = false)
+        string currentFile = "", bool blocked = false, string errorMessage = "")
     {
-        ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked);
+        ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked, errorMessage);
     }
 
     private bool IsBusinessSoftwareRunning(AppSettings settings, out string detectedProcess) =>

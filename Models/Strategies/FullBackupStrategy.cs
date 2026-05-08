@@ -17,18 +17,12 @@ namespace EasySaveWpf
         public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
-            {
-                Console.WriteLine(_languageManager.GetText("log_error_missing_paths"));
-                return;
-            }
+                throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
 
             try
             {
                 if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
-                {
-                    Console.WriteLine(_languageManager.GetText("log_error_source_not_found"));
-                    return;
-                }
+                    throw new DirectoryNotFoundException(_languageManager.GetText("log_error_source_not_found"));
 
                 // Si la source est un fichier unique, on le copie directement
                 if (File.Exists(job.SourceDir))
@@ -47,8 +41,7 @@ namespace EasySaveWpf
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{_languageManager.GetText("error_finding_files")}{ex.Message}");
-                    return;
+                    throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
                 }
 
                 foreach (string filePath in files)
@@ -110,21 +103,7 @@ namespace EasySaveWpf
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine($"{_languageManager.GetText("log_error_access_denied")}{ex.Message}");
-                logService.Save(new LogEntry
-                {
-                    BackupName = job.Name ?? string.Empty,
-                    SourceFilePath = job.SourceDir ?? string.Empty,
-                    TargetFilePath = "ACCESS_DENIED",
-                    FileSize = 0,
-                    FileTransferTimeMs = -1,
-                    EncryptionTimeMs = 0,
-                    Event = "AccessDenied"
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"{_languageManager.GetText("log_error_strategy")}{ex.Message}");
+                throw new UnauthorizedAccessException(_languageManager.GetText("log_error_access_denied") + ex.Message, ex);
             }
         }
 

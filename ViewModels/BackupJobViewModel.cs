@@ -13,6 +13,7 @@ public class BackupJobViewModel : ViewModelBase
     private bool _isRunning;
     private string _currentFile = string.Empty;
     private bool _blockedByBusinessSoftware;
+    private string _errorMessage = string.Empty;
 
     public BackupJob Job { get; }
 
@@ -29,8 +30,9 @@ public class BackupJobViewModel : ViewModelBase
             SetField(ref _status, value);
             OnPropertyChanged(nameof(StatusText));
             OnPropertyChanged(nameof(StatusColor));
-                OnPropertyChanged(nameof(HasBeenRun));
-                OnPropertyChanged(nameof(IsInProgress));
+            OnPropertyChanged(nameof(HasBeenRun));
+            OnPropertyChanged(nameof(IsInProgress));
+            OnPropertyChanged(nameof(HasError));
         }
     }
 
@@ -73,6 +75,18 @@ public class BackupJobViewModel : ViewModelBase
     }
 
     public bool HasCurrentFile => !string.IsNullOrWhiteSpace(CurrentFile);
+
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        set
+        {
+            if (SetField(ref _errorMessage, value))
+                OnPropertyChanged(nameof(HasError));
+        }
+    }
+
+    public bool HasError => Status == BackupStatus.Error && !string.IsNullOrEmpty(_errorMessage);
     public string StatusText
     {
         get
@@ -131,13 +145,14 @@ public class BackupJobViewModel : ViewModelBase
         LanguageManager.Instance.PropertyChanged += (s, e) => OnPropertyChanged(nameof(StatusText));
     }
 
-    public void ApplyProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    public void ApplyProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked, string errorMessage = "")
     {
         Status = status;
         Progression = Math.Max(0, progression);
         BlockedByBusinessSoftware = blocked;
         if (!string.IsNullOrEmpty(currentFile))
             CurrentFile = currentFile;
+        ErrorMessage = status == BackupStatus.Error ? errorMessage : string.Empty;
     }
 
 }

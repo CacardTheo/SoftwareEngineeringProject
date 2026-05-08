@@ -102,3 +102,21 @@ The `EasySaveWpf.csproj` build target automatically compiles CryptoSoft and copi
 | `Views/AddJobWindow.xaml/.cs` | Add job modal dialog |
 | `CryptoSoft/Program.cs` | XOR file encryptor/decryptor |
 | `CryptoSoft/CryptoSoft.csproj` | Standalone console project for encryption |
+
+---
+
+## 12. Error display when a backup fails
+
+Before this fix, if a backup encountered a fatal error — source directory doesn't exist, missing paths in the job config, access denied by the OS — the job card would still show the progress bar reaching 100% and the status as "Done", as if everything went fine. There was no visual feedback at all, and nothing was written to the log file to trace the failure.
+
+This has been completely reworked. When a backup hits a fatal error now:
+
+- The job card immediately shows the error message in **red**, directly below the progress bar. The message is the actual exception text (e.g. "Source directory not found", "Access to the path is denied").
+- The progress bar **stops at its current position** instead of jumping to 100%. The status color turns red.
+- The job status shows **"Error"** in red instead of the green "Done".
+- A **log entry** is written with the exception type and message, so you always have a trace of what failed and why (e.g. `Error:DirectoryNotFoundException:Source not found`).
+- The **state file** is updated to reflect the error status instead of marking the job as ended.
+
+The error message is automatically **cleared** the next time the job runs successfully, so old errors don't stick around after a successful retry.
+
+Errors that are detected before the backup even starts (e.g. the source path is empty or the directory simply doesn't exist) are caught the same way and shown immediately without starting the copy process.
