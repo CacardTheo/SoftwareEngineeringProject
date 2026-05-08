@@ -1,25 +1,31 @@
-﻿using System;
-using SoftwareEngineeringProject;
-using SoftwareEngineeringProject.Views;
+using Avalonia;
+using EasySaveWpf.ViewModels;
 
+namespace EasySaveWpf;
 
-namespace SoftwareEngineeringProject
+class Program
 {
-    class Program
+    [STAThread]
+    public static void Main(string[] args)
     {
-        static void Main(string[] args)
+        if (args.Length > 0)
         {
-            try
-            {
-                Console.OutputEncoding = System.Text.Encoding.UTF8;
-                ConsoleView view = new ConsoleView();
-                view.Run(args);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"A critical error occurred: {ex.Message}");
-                Console.ReadKey();
-            }
+            RunCli(args[0]);
+            return;
         }
+
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
+
+    private static void RunCli(string input)
+    {
+        var model = new MainViewModel();
+        bool success = model.RunJob(input);
+        Environment.Exit(success ? 0 : 1);
+    }
+
+    public static AppBuilder BuildAvaloniaApp() =>
+        AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .LogToTrace();
 }

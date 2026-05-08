@@ -1,7 +1,5 @@
-using SoftwareEngineeringProject.ViewModels;
-
-namespace SoftwareEngineeringProject.Views
-{
+using EasySaveWpf.ViewModels;
+using EasySaveWpf;
 
 public class ConsoleView
 {
@@ -32,9 +30,8 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("menu_run_one"));
         Console.WriteLine(_viewModel.GetText("menu_run_part"));
         Console.WriteLine(_viewModel.GetText("menu_run_all"));
-        Console.WriteLine(_viewModel.GetText("menu_log_format") + " (JSON/XML)");
-        Console.WriteLine("9. Change state file format (JSON/XML)");
-        Console.WriteLine("10. Exit");
+        Console.WriteLine(_viewModel.GetText("menu_settings"));
+        Console.WriteLine(_viewModel.GetText("menu_exit"));
         Console.Write(_viewModel.GetText("prompt_choice"));
     }
 
@@ -88,22 +85,14 @@ public class ConsoleView
                 break;
 
             case "7": // Run ALL JOBs
-                RunMethodResult(_viewModel.RunJob("1-5"), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
+                RunMethodResult(_viewModel.RunAllJobs(), _viewModel.GetText("job_execution_success"), _viewModel.GetText("job_execution_failure"));
                 break;
 
-            case "8": // Change log format
-                Console.Write(_viewModel.GetText("prompt_log_format"));
-                string format = Console.ReadLine() ?? "";
-                RunMethodResult(_viewModel.SetLogFormat(format), _viewModel.GetText("log_format_success"), _viewModel.GetText("log_format_failure"));
+            case "9": // Settings
+                ConfigureSettings();
                 break;
 
-            case "9": // Change state file format
-                Console.Write("Enter state file format (JSON or XML): ");
-                string stateFormat = Console.ReadLine() ?? "";
-                RunMethodResult(_viewModel.SetStateFormat(stateFormat), "State format changed successfully!", "State format change failed!");
-                break;
-
-            case "10": // Exit
+            case "8": // Exit
                 Environment.Exit(0);
                 break;
 
@@ -111,6 +100,38 @@ public class ConsoleView
                 Console.WriteLine(_viewModel.GetText("invalid_choice"));
                 break;
         }
+    }
+
+    private void ConfigureSettings()
+    {
+        Console.WriteLine(_viewModel.GetText("settings_title"));
+
+        AppSettings settings = _viewModel.GetSettings();
+
+        Console.Write(_viewModel.GetText("prompt_log_format"));
+        string logFormat = (Console.ReadLine() ?? "json").Trim();
+        settings.LogFormat = logFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? EasyLog.LogFormat.Xml
+            : EasyLog.LogFormat.Json;
+
+        Console.Write(_viewModel.GetText("prompt_state_format"));
+        string stateFormat = (Console.ReadLine() ?? "json").Trim();
+        settings.StateFormat = stateFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
+            ? EasyLog.LogFormat.Xml
+            : EasyLog.LogFormat.Json;
+
+        Console.Write(_viewModel.GetText("prompt_business_processes"));
+        string processInput = Console.ReadLine() ?? string.Empty;
+        settings.BusinessSoftwareProcesses = processInput
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _viewModel.ApplySettings(settings);
+
+        Console.WriteLine(_viewModel.GetText("settings_saved"));
+        Console.WriteLine(_viewModel.GetText("exit"));
+        Console.ReadLine();
     }
 
     private void DisplayJobs()
@@ -135,6 +156,4 @@ public class ConsoleView
         Console.WriteLine(_viewModel.GetText("exit"));
         Console.ReadLine();
     }
-}
-
 }

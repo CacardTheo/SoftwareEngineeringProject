@@ -1,24 +1,44 @@
-using SoftwareEngineeringProject;
+using EasySaveWpf;
 using EasyLog;
+
+namespace EasySaveWpf.ViewModels;
+
 public class BackupProcessor
 {
-    private IBackupStrategy strategy;
+    private readonly StateManager _stateManager;
+    private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
+    private readonly CryptoSoftService _cryptoSoftService;
+    private readonly AppSettings _settings;
 
-    // Uses EasyLog to log errors and info
-    // private EasyLog logger;
-    private StateManager stateManager;
+    public event Action<string, BackupStatus, int, string, bool>? ProgressChanged;
 
-    private readonly LogService _logService;
-
-    public BackupProcessor(StateManager stateManager, ILogSerializer logSerializer)
+    public BackupProcessor(
+        StateManager stateManager,
+        BusinessSoftwareMonitor businessSoftwareMonitor,
+        CryptoSoftService cryptoSoftService,
+        AppSettings settings)
     {
-        this.stateManager = stateManager;
-        _logService = new LogService(logSerializer);
+        _stateManager = stateManager;
+        _businessSoftwareMonitor = businessSoftwareMonitor;
+        _cryptoSoftService = cryptoSoftService;
+        _settings = settings;
     }
 
-    public void Execute(BackupJob job)
+    public bool Execute(BackupJob job)
     {
-        // Select strategy from job type
+        AppSettings settings = _settings;
+        _stateManager.SetFormat(settings.StateFormat);
+        var logService = new LogService(settings.LogFormat);
+
+        if (IsBusinessSoftwareRunning(settings, out string detectedBeforeStart))
+        {
+            LogBusinessSoftwareBlock(job, detectedBeforeStart, logService, "BlockedBeforeStart");
+            RaiseProgress(job.Name, BackupStatus.Inactive, 0, blocked: true);
+            return false;
+        }
+
+        IBackupStrategy strategy;
+
         switch (job.Type)
         {
             case BackupType.Full:
@@ -34,7 +54,10 @@ public class BackupProcessor
         string[] files;
         try
         {
-            files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+            if (File.Exists(job.SourceDir))
+                files = new string[] { job.SourceDir };
+            else
+                files = Directory.GetFiles(job.SourceDir ?? string.Empty, "*.*", SearchOption.AllDirectories);
         }
         catch
         {
@@ -43,85 +66,163 @@ public class BackupProcessor
 
         int totalFiles = files.Length;
         long totalSize = 0;
+
         foreach (string file in files)
         {
             totalSize += new FileInfo(file).Length;
         }
 
-        // State: Inactive
-        stateManager.UpdateJobState(new StateEntry
+        _stateManager.UpdateJobState(new StateEntry
         {
             Name = job.Name ?? "Unnamed Job",
-            SourceFilePath = job.SourceDir ?? "Unknown Source",
-            TargetFilePath = job.TargetDir ?? "Unknown Target",
+            SourceFilePath = job.SourceDir ?? string.Empty,
+            TargetFilePath = job.TargetDir ?? string.Empty,
             State = BackupStatus.Inactive,
             TotalFilesToCopy = totalFiles,
             TotalFilesSize = totalSize,
             NbFilesLeftToDo = totalFiles,
+            SizeRemaining = totalSize,
             Progression = 0,
             LastRun = DateTime.Now
         });
 
+        RaiseProgress(job.Name, BackupStatus.In_Progress, 0);
+
         try
         {
-            // State: In Progress
-            // Execute backup strategy with progress callback
             long bytesCopied = 0;
             int filesCopied = 0;
+            int lastReportedProgression = -1;
 
-            strategy.Backup(job, _logService, (sourceFile, destFile, fileSize)  =>
+            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue, OnBytesWritten);
+
+            void OnBytesWritten(string sourceFile, string destFile, long bytes)
             {
-                filesCopied++;
-                bytesCopied += fileSize;
-                int progression = totalSize > 0 ? (int)((bytesCopied * 100) / totalSize) : 0;
-                stateManager.UpdateJobState(new StateEntry
+                bytesCopied += bytes;
+                int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+                if (progression == lastReportedProgression) return;
+                lastReportedProgression = progression;
+
+                _stateManager.UpdateJobState(new StateEntry
                 {
                     Name = job.Name ?? "Unnamed Job",
-                    SourceFilePath = job.SourceDir ?? "Unknown Source",
-                    TargetFilePath = job.TargetDir ?? "Unknown Target",
+                    SourceFilePath = sourceFile,
+                    TargetFilePath = destFile,
                     State = BackupStatus.In_Progress,
                     TotalFilesToCopy = totalFiles,
                     TotalFilesSize = totalSize,
-                    NbFilesLeftToDo = totalFiles,
+                    NbFilesLeftToDo = Math.Max(0, totalFiles - filesCopied),
+                    SizeRemaining = Math.Max(0, totalSize - bytesCopied),
                     Progression = progression,
                     LastRun = DateTime.Now
                 });
-            });
+                RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
+            }
 
+            void OnFileCopied(string sourceFile, string destFile, long fileSize)
+            {
+                filesCopied++;
+                int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+                lastReportedProgression = progression;
 
-                // State: Ended
-                stateManager.UpdateJobState(new StateEntry
+                _stateManager.UpdateJobState(new StateEntry
                 {
                     Name = job.Name ?? "Unnamed Job",
-                    SourceFilePath = job.SourceDir ?? "Unknown Source",
-                    TargetFilePath = job.TargetDir ?? "Unknown Target",
-                    State = BackupStatus.Ended,
+                    SourceFilePath = sourceFile,
+                    TargetFilePath = destFile,
+                    State = BackupStatus.In_Progress,
                     TotalFilesToCopy = totalFiles,
                     TotalFilesSize = totalSize,
-                    NbFilesLeftToDo = 0,
-                    Progression = 100,
+                    NbFilesLeftToDo = Math.Max(0, totalFiles - filesCopied),
+                    SizeRemaining = Math.Max(0, totalSize - bytesCopied),
+                    Progression = progression,
                     LastRun = DateTime.Now
                 });
+                RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
             }
-        catch
-        {
-            // On error, update state accordingly
-            stateManager.UpdateJobState(new StateEntry
+
+            bool CanContinue() => !IsBusinessSoftwareRunning(settings, out _);
+
+            _stateManager.UpdateJobState(new StateEntry
             {
                 Name = job.Name ?? "Unnamed Job",
-                SourceFilePath = job.SourceDir ?? "Unknown Source",
-                TargetFilePath = job.TargetDir ?? "Unknown Target",
+                SourceFilePath = job.SourceDir ?? string.Empty,
+                TargetFilePath = job.TargetDir ?? string.Empty,
+                State = BackupStatus.Ended,
+                TotalFilesToCopy = totalFiles,
+                TotalFilesSize = totalSize,
+                NbFilesLeftToDo = 0,
+                SizeRemaining = 0,
+                Progression = 100,
+                LastRun = DateTime.Now
+            });
+
+            RaiseProgress(job.Name, BackupStatus.Ended, 100);
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
+            {
+                IsBusinessSoftwareRunning(settings, out string detectedProcess);
+                LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
+                RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
+
+                _stateManager.UpdateJobState(new StateEntry
+                {
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = job.SourceDir ?? string.Empty,
+                    TargetFilePath = job.TargetDir ?? string.Empty,
+                    State = BackupStatus.Inactive,
+                    LastRun = DateTime.Now
+                });
+
+                return false;
+            }
+
+            throw;
+        }
+        catch
+        {
+            _stateManager.UpdateJobState(new StateEntry
+            {
+                Name = job.Name ?? "Unnamed Job",
+                SourceFilePath = job.SourceDir ?? string.Empty,
+                TargetFilePath = job.TargetDir ?? string.Empty,
                 State = BackupStatus.Error,
                 TotalFilesToCopy = 0,
                 TotalFilesSize = 0,
                 NbFilesLeftToDo = 0,
+                SizeRemaining = 0,
                 Progression = 0,
                 LastRun = DateTime.Now
             });
 
-            // logger.Log(ex.Message);
-
+            RaiseProgress(job.Name, BackupStatus.Error, 0);
             throw;
         }
+    }
+
+    private void RaiseProgress(string? jobName, BackupStatus status, int progression,
+        string currentFile = "", bool blocked = false)
+    {
+        ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked);
+    }
+
+    private bool IsBusinessSoftwareRunning(AppSettings settings, out string detectedProcess) =>
+        _businessSoftwareMonitor.TryFindRunningBusinessSoftware(settings.BusinessSoftwareProcesses, out detectedProcess);
+
+    private void LogBusinessSoftwareBlock(BackupJob job, string processName, LogService logService, string eventName)
+    {
+        logService.Save(new LogEntry
+        {
+            BackupName = job.Name ?? string.Empty,
+            SourceFilePath = job.SourceDir ?? string.Empty,
+            TargetFilePath = job.TargetDir ?? string.Empty,
+            FileSize = 0,
+            FileTransferTimeMs = 0,
+            EncryptionTimeMs = 0,
+            Event = string.IsNullOrWhiteSpace(processName) ? eventName : $"{eventName}:{processName}"
+        });
     }
 }

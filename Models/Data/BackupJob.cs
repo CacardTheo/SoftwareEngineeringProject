@@ -1,4 +1,4 @@
-﻿namespace SoftwareEngineeringProject
+﻿namespace EasySaveWpf
 {
     public class BackupJob
     {

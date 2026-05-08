@@ -1,155 +1,452 @@
-using System.Collections.Concurrent;
-using System.Security.Authentication.ExtendedProtection;
-using EasyLog;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using EasySaveWpf;
+using Avalonia.Threading;
 
-namespace SoftwareEngineeringProject.ViewModels
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace EasySaveWpf.ViewModels;
+
+public class MainViewModel : ViewModelBase
 {
-    public class MainViewModel
+    private readonly LanguageManager _languageManager;
+    private readonly SettingsManager _settingsManager;
+    private readonly AppSettings _settings;
+    private readonly BackupProcessor _backupProcessor;
+    private readonly ConfigManager _configManager;
+
+    private readonly List<BackupJob> _jobs;
+
+    public ObservableCollection<BackupJobViewModel> Jobs { get; } = new();
+
+    private string _selectedLanguage = "en";
+    public string SelectedLanguage
     {
-        private readonly LanguageManager _languageManager;
-        private readonly ConfigManager _configManager;
-        private BackupProcessor _backupProcessor;
-
-        private List<BackupJob> _jobs = new List<BackupJob>();
-
-        public MainViewModel()
+        get => _selectedLanguage;
+        set
         {
-            _languageManager = LanguageManager.GetInstance();
-            _configManager = new ConfigManager();
-            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
-            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(_configManager.LoadLogFormat()));
+            if (SetField(ref _selectedLanguage, value))
+            {
+                ChangeLanguage(value);
+            }
         }
+    }
 
-        private static ILogSerializer CreateSerializer(string format) =>
-            format.Equals("XML", StringComparison.OrdinalIgnoreCase)
-                ? new XmlLogSerializer()
-                : new JsonLogSerializer();
+    public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
 
-        public bool SetLogFormat(string format)
+    // Callbacks définis par la MainWindow pour ouvrir les fenêtres de dialogue
+    // Le callback reçoit une Action à appeler quand l'utilisateur valide ou annule
+    public Action<Action<BackupJob?>>? RequestAddJob { get; set; }
+    public Action<AppSettings, Action<AppSettings?>>? RequestSettings { get; set; }
+
+    public Command RunAllCommand { get; }
+    public ICommand OpenSettingsCommand { get; }
+    public ICommand AddJobCommand { get; }
+
+    private bool _isRunningAll = false;
+
+    public MainViewModel()
+    {
+        _languageManager = LanguageManager.GetInstance();
+        _settingsManager = new SettingsManager();
+        _settings = _settingsManager.Load();
+
+        _languageManager.SetLanguage(_settings.Language);
+
+        StateManager stateManager = new StateManager();
+        stateManager.SetFormat(_settings.StateFormat);
+
+        _backupProcessor = new BackupProcessor(
+            stateManager,
+            new BusinessSoftwareMonitor(),
+            new CryptoSoftService(),
+            _settings);
+
+        _configManager = new ConfigManager();
+        _jobs = _configManager.LoadJobs();
+
+        _backupProcessor.ProgressChanged += OnJobProgressChanged;
+
+        _selectedLanguage = _settings.Language;
+
+        FillJobCards();
+
+        RunAllCommand = new Command(RunAll, () => !_isRunningAll);
+        AddJobCommand = new Command(ShowAddJobDialog);
+        OpenSettingsCommand = new Command(ShowSettingsDialog);
+    }
+
+    private void FillJobCards()
+    {
+        foreach (BackupJob job in _jobs)
         {
-            if (!format.Equals("JSON", StringComparison.OrdinalIgnoreCase) &&
-                !format.Equals("XML", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            _configManager.SaveLogFormat(format.ToUpper());
-            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
-            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(format));
-            return true;
+            Jobs.Add(CreateCard(job));
         }
+    }
 
-        public bool SetStateFormat(string format)
-        {
-            if (!format.Equals("JSON", StringComparison.OrdinalIgnoreCase) &&
-                !format.Equals("XML", StringComparison.OrdinalIgnoreCase))
-                return false;
+    private BackupJobViewModel CreateCard(BackupJob job)
+    {
+        return new BackupJobViewModel(
+            job,
+            onRun: RunCard,
+            onDelete: DeleteCard);
+    }
 
-            _configManager.SaveStateFormat(format.ToUpper());
-            StateManager stateManager = new StateManager(_configManager.LoadStateFormat());
-            _backupProcessor = new BackupProcessor(stateManager, CreateSerializer(_configManager.LoadLogFormat()));
-            return true;
-        }
+    // Lance le backup d'une carte sur un thread de fond
+    // pour ne pas bloquer le thread UI pendant la copie des fichiers
+    private void RunCard(BackupJobViewModel card)
+    {
+        card.IsRunning = true;
+        card.Status = BackupStatus.In_Progress;
+        card.Progression = 0;
 
-        public string GetText(string key)
-        {
-            // Use the singleton instance retrieved at initialization
-            return _languageManager.GetText(key);
-        }
+        int index = _jobs.IndexOf(card.Job);
 
-        public bool ChangeLanguage(string lang)
+        Thread thread = new Thread(() =>
         {
             try
             {
-                _languageManager.SetLanguage(lang);
-                return true;
+                RunJobByIndex(index);
             }
-            catch
+            catch (Exception) { }
+            finally
             {
-                return false; // Returns false if language change fails
+                // On repasse sur le thread UI pour modifier les propriétés liées à l'interface
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    card.IsRunning = false;
+                });
+            }
+        });
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    private void DeleteCard(BackupJobViewModel card)
+    {
+        int index = _jobs.IndexOf(card.Job);
+        if (DeleteJob(index))
+        {
+            Jobs.Remove(card);
+        }
+    }
+
+    // Lance tous les backups sur un thread de fond
+    private void RunAll()
+    {
+        _isRunningAll = true;
+        RunAllCommand.RaiseCanExecuteChanged();
+
+        foreach (BackupJobViewModel card in Jobs)
+            card.IsRunning = true;
+
+        Thread thread = new Thread(() =>
+        {
+            try
+            {
+                RunAllJobs();
+            }
+            catch (Exception) { }
+            finally
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _isRunningAll = false;
+                    RunAllCommand.RaiseCanExecuteChanged();
+                    foreach (BackupJobViewModel card in Jobs)
+                        card.IsRunning = false;
+                });
+            }
+        });
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    // Ouvre la fenêtre d'ajout de job via un callback
+    // Le callback sera appelé quand l'utilisateur confirme ou annule
+    private void ShowAddJobDialog()
+    {
+        RequestAddJob?.Invoke(newJob =>
+        {
+            if (newJob == null) return;
+            if (AddJob(newJob))
+                Jobs.Add(CreateCard(newJob));
+        });
+    }
+
+    // Ouvre la fenêtre des paramètres via un callback
+    private void ShowSettingsDialog()
+    {
+        AppSettings current = GetSettings();
+        RequestSettings?.Invoke(current, updated =>
+        {
+            if (updated == null) return;
+            ApplySettings(updated);
+            SetField(ref _selectedLanguage, updated.Language, nameof(SelectedLanguage));
+        });
+    }
+
+    private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    {
+        Dispatcher.UIThread.Invoke(() =>
+        {
+            UpdateCardProgress(jobName, status, progression, currentFile, blocked);
+        });
+    }
+
+    private void UpdateCardProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked)
+    {
+        foreach (BackupJobViewModel card in Jobs)
+        {
+            if (card.Name == jobName)
+            {
+                card.ApplyProgress(jobName, status, progression, currentFile, blocked);
+                break;
             }
         }
+    }
 
-        public bool CreateJob(string name, string source, string target, string type)
+
+    public string GetText(string key) => _languageManager.GetText(key);
+
+    public bool ChangeLanguage(string lang)
+    {
+        try
         {
-            // Logic to create a backup job based on the provided parameters, we can't have more than 5 jobs
-            if (_jobs.Count >= 5 || _jobs.Any(j => j.Name == name)) return false;
-            _jobs.Add(new BackupJob
-            {
-                Name = name,
-                SourceDir = source,
-                TargetDir = target,
-                Type = type.Equals("Full", StringComparison.OrdinalIgnoreCase) ? BackupType.Full : BackupType.Differential
-            });
-            return true; // Returns true if job creation is successful
-        }
-
-        public bool DeleteJob(int index)
-        {
-            // Logic to delete a backup job based on the provided index
-            if (index >= 0 && index < _jobs.Count)
-            {
-                _jobs.RemoveAt(index);
-                return true; // Returns true if deletion is successful
-            }
-            return false; // Returns false if index is out of range
-        }
-
-        public bool RunJob(string input)
-        {
-            if (_jobs.Count == 0) return false;
-            List<int> indicesToRun = ParseIndices(input, _jobs.Count);
-
-            foreach (int index in indicesToRun)
-            {
-                var job = _jobs[index];
-
-                _backupProcessor.Execute(job);
-            }
+            _languageManager.SetLanguage(lang);
+            _settings.Language = lang;
+            SaveSettings();
             return true;
         }
+        catch
+        {
+            return false;
+        }
+    }
 
-        public List<BackupJob> GetJobs() {
-            return _jobs; // Returns the list of backup jobs
+    public bool CreateJob(string name, string source, string target, string type)
+    {
+        foreach (BackupJob job in _jobs)
+        {
+            if (job.Name == name)
+                return false;
         }
 
-        private List<int> ParseIndices(string input, int maxCount)
+        BackupType backupType = BackupType.Differential;
+        if (type.Equals("Full", StringComparison.OrdinalIgnoreCase))
         {
-            var indices = new HashSet<int>(); // Hasset to avoid duplicates
+            backupType = BackupType.Full;
+        }
 
-            // Management of range "1-3"
-            if (input.Contains('-'))
+        _jobs.Add(new BackupJob
+        {
+            Name = name,
+            SourceDir = source,
+            TargetDir = target,
+            Type = backupType
+        });
+
+        _configManager.SaveJobs(_jobs);
+        return true;
+    }
+
+    public bool AddJob(BackupJob job)
+    {
+        if (job.Name == null)
+            return false;
+
+        foreach (BackupJob existingJob in _jobs)
+        {
+            if (existingJob.Name == job.Name)
+                return false;
+        }
+
+        _jobs.Add(job);
+        _configManager.SaveJobs(_jobs);
+        return true;
+    }
+
+    public bool DeleteJob(int index)
+    {
+        if (index < 0 || index >= _jobs.Count) return false;
+        _jobs.RemoveAt(index);
+        _configManager.SaveJobs(_jobs);
+        return true;
+    }
+
+    public bool RunJob(string input)
+    {
+        if (_jobs.Count == 0) return false;
+
+        List<int> indicesToRun = ParseIndices(input, _jobs.Count);
+        bool allSucceeded = true;
+
+        foreach (int index in indicesToRun)
+        {
+            bool succeeded = _backupProcessor.Execute(_jobs[index]);
+            allSucceeded &= succeeded;
+
+            if (!succeeded)
+                break;
+        }
+
+        return allSucceeded;
+    }
+
+    public bool RunAllJobs()
+    {
+        if (_jobs.Count == 0) return false;
+        return RunJob($"1-{_jobs.Count}");
+    }
+
+    public bool RunJobByIndex(int index)
+    {
+        if (index < 0 || index >= _jobs.Count) return false;
+        return _backupProcessor.Execute(_jobs[index]);
+    }
+
+    public List<BackupJob> GetJobs() => _jobs;
+
+    public AppSettings GetSettings() => _settings;
+
+    public void UpdateBusinessSoftwareProcesses(IEnumerable<string> processNames)
+    {
+        _settings.BusinessSoftwareProcesses = CreateUniqueList(processNames);
+        SaveSettings();
+    }
+
+    public void ApplySettings(AppSettings updated)
+    {
+        _settings.LogFormat = updated.LogFormat;
+        _settings.StateFormat = updated.StateFormat;
+        _settings.BusinessSoftwareProcesses = updated.BusinessSoftwareProcesses;
+        _settings.EncryptedExtensions = updated.EncryptedExtensions;
+        _settings.EncryptionKey = updated.EncryptionKey;
+        _languageManager.SetLanguage(updated.Language);
+        _settings.Language = updated.Language;
+        SaveSettings();
+    }
+
+    public void UpdateEncryptedExtensions(IEnumerable<string> extensions)
+    {
+        _settings.EncryptedExtensions = CreateUniqueExtensionList(extensions);
+        SaveSettings();
+    }
+
+    public void SetEncryptionKey(string key)
+    {
+        _settings.EncryptionKey = key;
+        SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+        _settingsManager.Save(_settings);
+    }
+
+    private static List<string> CreateUniqueList(IEnumerable<string> values)
+    {
+        var result = new List<string>();
+
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            string cleanValue = value.Trim();
+            bool alreadyAdded = false;
+
+            foreach (string existing in result)
             {
-                var parts = input.Split('-');
-                if (parts.Length == 2 && int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
+                if (string.Equals(existing, cleanValue, StringComparison.OrdinalIgnoreCase))
                 {
-                    // We do -1 because the user inputs are 1-based, but our list is 0-based
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+                result.Add(cleanValue);
+        }
+
+        return result;
+    }
+
+    private static List<string> CreateUniqueExtensionList(IEnumerable<string> values)
+    {
+        var result = new List<string>();
+
+        foreach (var value in values)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            string cleanValue = value.Trim().ToLowerInvariant();
+            bool alreadyAdded = false;
+
+            foreach (string existing in result)
+            {
+                if (existing == cleanValue)
+                {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (!alreadyAdded)
+                result.Add(cleanValue);
+        }
+
+        return result;
+    }
+
+    // Transforme une saisie utilisateur ("1-3" ou "1;4;5") en liste d'indices 0-based
+    private static List<int> ParseIndices(string input, int maxCount)
+    {
+        var indices = new List<int>();
+
+        if (input.Contains('-'))
+        {
+            string[] parts = input.Split('-');
+            if (parts.Length == 2)
+            {
+                if (int.TryParse(parts[0], out int start) && int.TryParse(parts[1], out int end))
+                {
                     for (int i = start; i <= end; i++)
                     {
-                        if (i > 0 && i <= maxCount) indices.Add(i - 1);
+                        if (i > 0 && i <= maxCount)
+                        {
+                            int zeroBased = i - 1;
+                            if (!indices.Contains(zeroBased))
+                                indices.Add(zeroBased);
+                        }
                     }
                 }
             }
-            // Management of multiple indices "1;3;5"
-            else if (input.Contains(';'))
-            {
-                var parts = input.Split(';');
-                foreach (var part in parts)
-                {
-                    if (int.TryParse(part, out int id) && id > 0 && id <= maxCount)
-                    {
-                        indices.Add(id - 1);
-                    }
-                }
-            }
-            // Management of single index "1"
-            else
-            {
-                if (int.TryParse(input, out int id) && id > 0 && id <= maxCount)
-                {
-                    indices.Add(id - 1);
-                }
-            }
-
-            return indices.OrderBy(i => i).ToList();
         }
+        else if (input.Contains(';'))
+        {
+            string[] parts = input.Split(';');
+            foreach (string part in parts)
+            {
+                if (int.TryParse(part, out int id) && id > 0 && id <= maxCount)
+                {
+                    int zeroBased = id - 1;
+                    if (!indices.Contains(zeroBased))
+                        indices.Add(zeroBased);
+                }
+            }
+        }
+        else
+        {
+            if (int.TryParse(input, out int id) && id > 0 && id <= maxCount)
+            {
+                indices.Add(id - 1);
+            }
+        }
+
+        indices.Sort();
+        return indices;
     }
 }

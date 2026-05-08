@@ -1,18 +1,19 @@
-using SoftwareEngineeringProject;
-using System.Globalization;
+using EasyLog;
+using EasySaveWpf;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Xml.Linq;
+using System.Xml.Serialization;
 
 public class StateManager
 {
 
-    private readonly string _stateFilesPath;
-    private string _format;
+    private readonly string _stateFolderPath;
 
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public StateManager(string format = "JSON")
+    private LogFormat _format = LogFormat.Json;
+
+    public StateManager()
     {
         string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string easySaveFolder = Path.Combine(appDataFolder, "EasySave");
@@ -22,9 +23,7 @@ public class StateManager
             Directory.CreateDirectory(easySaveFolder);
         }
 
-        _format = format.Equals("XML", StringComparison.OrdinalIgnoreCase) ? "XML" : "JSON";
-        string fileName = _format.Equals("XML") ? "state.xml" : "state.json";
-        _stateFilesPath = Path.Combine(easySaveFolder, fileName);
+        _stateFolderPath = easySaveFolder;
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -33,107 +32,58 @@ public class StateManager
         };
     }
 
+    public void SetFormat(LogFormat format)
+    {
+        _format = format;
+    }
+
     public void SaveState(List<StateEntry> states)
     {
-        if (_format.Equals("XML"))
+        if (_format == LogFormat.Xml)
         {
-            SaveStateAsXml(states);
+            string xmlPath = Path.Combine(_stateFolderPath, "state.xml");
+            var serializer = new XmlSerializer(typeof(List<StateEntry>));
+            using FileStream stream = File.Create(xmlPath);
+            serializer.Serialize(stream, states);
+            return;
         }
-        else
-        {
-            SaveStateAsJson(states);
-        }
-    }
 
-    private void SaveStateAsJson(List<StateEntry> states)
-    {
+        string jsonPath = Path.Combine(_stateFolderPath, "state.json");
         string jsonString = JsonSerializer.Serialize(states, _jsonOptions);
-        File.WriteAllText(_stateFilesPath, jsonString);
-    }
-
-    private void SaveStateAsXml(List<StateEntry> states)
-    {
-        using var sw = new System.IO.StringWriter();
-        var settings = new System.Xml.XmlWriterSettings
-        {
-            Indent = true,
-            Encoding = System.Text.Encoding.UTF8
-        };
-        using (var xw = System.Xml.XmlWriter.Create(sw, settings))
-        {
-            xw.WriteStartDocument();
-            xw.WriteStartElement("States");
-            foreach (var state in states)
-            {
-                xw.WriteStartElement("State");
-                xw.WriteElementString("Name", state.Name);
-                xw.WriteElementString("Status", state.State.ToString());
-                xw.WriteElementString("LastRun", state.LastRun.ToString("O"));
-                xw.WriteElementString("SourceFilePath", state.SourceFilePath);
-                xw.WriteElementString("TargetFilePath", state.TargetFilePath);
-                xw.WriteElementString("TotalFilesToCopy", state.TotalFilesToCopy.ToString());
-                xw.WriteElementString("TotalFilesSize", state.TotalFilesSize.ToString());
-                xw.WriteElementString("NbFilesLeftToDo", state.NbFilesLeftToDo.ToString());
-                xw.WriteElementString("Progression", state.Progression.ToString());
-                xw.WriteEndElement();
-            }
-            xw.WriteEndElement();
-            xw.WriteEndDocument();
-        }
-        File.WriteAllText(_stateFilesPath, sw.ToString());
+        File.WriteAllText(jsonPath, jsonString);
     }
 
     public List<StateEntry> LoadStates()
     {
-        if (!File.Exists(_stateFilesPath))
+        if (_format == LogFormat.Xml)
         {
-            return new List<StateEntry>();
-        }
-
-        if (_format.Equals("XML"))
-        {
-            return LoadStatesFromXml();
-        }
-        else
-        {
-            return LoadStatesFromJson();
-        }
-    }
-
-    private List<StateEntry> LoadStatesFromJson()
-    {
-        string jsonString = File.ReadAllText(_stateFilesPath);
-        List<StateEntry> states = JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
-        return states;
-    }
-
-    private List<StateEntry> LoadStatesFromXml()
-    {
-        var states = new List<StateEntry>();
-        try
-        {
-            var doc = XDocument.Load(_stateFilesPath);
-            foreach (var stateElem in doc.Root?.Elements("State") ?? Enumerable.Empty<XElement>())
+            string xmlPath = Path.Combine(_stateFolderPath, "state.xml");
+            if (!File.Exists(xmlPath))
             {
-                var state = new StateEntry
-                {
-                    Name = stateElem.Element("Name")?.Value ?? "Unknown",
-                    SourceFilePath = stateElem.Element("SourceFilePath")?.Value ?? "",
-                    TargetFilePath = stateElem.Element("TargetFilePath")?.Value ?? "",
-                    State = Enum.TryParse<BackupStatus>(stateElem.Element("Status")?.Value ?? "Inactive", out var status) ? status : BackupStatus.Inactive,
-                    TotalFilesToCopy = int.TryParse(stateElem.Element("TotalFilesToCopy")?.Value, out var totalFiles) ? totalFiles : 0,
-                    TotalFilesSize = long.TryParse(stateElem.Element("TotalFilesSize")?.Value, out var totalSize) ? totalSize : 0,
-                    NbFilesLeftToDo = int.TryParse(stateElem.Element("NbFilesLeftToDo")?.Value, out var nbLeft) ? nbLeft : 0,
-                    Progression = int.TryParse(stateElem.Element("Progression")?.Value, out var prog) ? prog : 0,
-                    LastRun = DateTime.TryParse(stateElem.Element("LastRun")?.Value, out var lastRun) ? lastRun : DateTime.Now
-                };
-                states.Add(state);
+                return new List<StateEntry>();
+            }
+
+            try
+            {
+                var serializer = new XmlSerializer(typeof(List<StateEntry>));
+                using FileStream stream = File.OpenRead(xmlPath);
+                return (List<StateEntry>?)serializer.Deserialize(stream) ?? new List<StateEntry>();
+            }
+            catch
+            {
+                return new List<StateEntry>();
             }
         }
-        catch
+
+        string jsonPath = Path.Combine(_stateFolderPath, "state.json");
+        if (!File.Exists(jsonPath))
         {
             return new List<StateEntry>();
         }
+
+        string jsonString = File.ReadAllText(jsonPath);
+
+        List<StateEntry> states = JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
         return states;
     }
 
