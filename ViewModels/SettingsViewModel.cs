@@ -11,6 +11,7 @@ public class SettingsViewModel : ViewModelBase
     private LogFormat _stateFormat;
     private string _businessProcesses = string.Empty;
     private string _encryptedExtensions = string.Empty;
+    private string _prioritizedExtensions = string.Empty;
     private string _encryptionKey = string.Empty;
 
     public string Language
@@ -41,6 +42,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _encryptedExtensions;
         set => SetField(ref _encryptedExtensions, value);
+    }
+
+    public string PrioritizedExtensions
+    {
+        get => _prioritizedExtensions;
+        set => SetField(ref _prioritizedExtensions, value);
     }
 
     public string EncryptionKey
@@ -96,6 +103,7 @@ public class SettingsViewModel : ViewModelBase
         _businessProcesses = string.Join(Environment.NewLine, current.BusinessSoftwareProcesses);
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
         _encryptionKey = current.EncryptionKey;
+        _prioritizedExtensions = string.Join(Environment.NewLine, current.PrioritizedExtensions);
 
         SaveCommand = new Command(Save);
         CancelCommand = new Command(() => Cancelled?.Invoke());
@@ -110,7 +118,8 @@ public class SettingsViewModel : ViewModelBase
             StateFormat = StateFormat,
             BusinessSoftwareProcesses = ParseLines(BusinessProcesses),
             EncryptedExtensions = ParseLines(EncryptedExtensions),
-            EncryptionKey = EncryptionKey
+            EncryptionKey = EncryptionKey,
+            PrioritizedExtensions = ParseLines(PrioritizedExtensions)
         };
         Saved?.Invoke(updated);
     }

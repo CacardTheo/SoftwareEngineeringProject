@@ -46,7 +46,9 @@ namespace EasySaveWpf
                 throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
             }
 
-            foreach (FileInfo file in files)
+            var orderedFiles = files.OrderBy(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLower()) ? 0 : 1);
+
+            foreach (FileInfo file in orderedFiles)
             {
                 if (!canCopyNextFile())
                     throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");

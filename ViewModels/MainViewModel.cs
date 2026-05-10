@@ -322,6 +322,7 @@ public class MainViewModel : ViewModelBase
         _settings.StateFormat = updated.StateFormat;
         _settings.BusinessSoftwareProcesses = updated.BusinessSoftwareProcesses;
         _settings.EncryptedExtensions = updated.EncryptedExtensions;
+        _settings.PrioritizedExtensions = updated.PrioritizedExtensions;
         _settings.EncryptionKey = updated.EncryptionKey;
         _languageManager.SetLanguage(updated.Language);
         _settings.Language = updated.Language;

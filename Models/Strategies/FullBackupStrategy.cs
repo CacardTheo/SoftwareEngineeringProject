@@ -34,23 +34,25 @@ namespace EasySaveWpf
                     return;
                 }
 
-                string[] files;
+                DirectoryInfo sourceInfo = new DirectoryInfo(job.SourceDir);
+                FileInfo[] files;
                 try
                 {
-                    files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
+                    files = sourceInfo.GetFiles("*.*", SearchOption.AllDirectories);
                 }
                 catch (Exception ex)
                 {
                     throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
                 }
 
-                foreach (string filePath in files)
+                var orderedFiles = files.OrderBy(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLower()) ? 0 : 1);
+
+                foreach (var filePath in orderedFiles)
                 {
                     if (!canCopyNextFile())
                         throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
-                    FileInfo fileInfo = new FileInfo(filePath);
-                    string targetPath = filePath.Replace(job.SourceDir, job.TargetDir);
+                    string targetPath = filePath.FullName.Replace(job.SourceDir, job.TargetDir);
 
                     Stopwatch sw = Stopwatch.StartNew();
                     try
@@ -58,18 +60,18 @@ namespace EasySaveWpf
                         string? dir = Path.GetDirectoryName(targetPath);
                         if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-                        FileHelper.CopyFile(filePath, targetPath, onBytesWritten);
+                        FileHelper.CopyFile(filePath.FullName, targetPath, onBytesWritten);
                         sw.Stop();
 
-                        long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
-                        onFileCopied(filePath, targetPath, fileInfo.Length);
+                        long encryptionTime = TryEncrypt(targetPath, filePath.Extension, cryptoService, settings);
+                        onFileCopied(filePath.FullName, targetPath, filePath.Length);
 
                         logService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath,
+                            SourceFilePath = filePath.FullName,
                             TargetFilePath = targetPath,
-                            FileSize = fileInfo.Length,
+                            FileSize = filePath.Length,
                             FileTransferTimeMs = sw.ElapsedMilliseconds,
                             EncryptionTimeMs = encryptionTime,
                             Event = "FileCopied"
@@ -82,14 +84,14 @@ namespace EasySaveWpf
                     catch (Exception ex)
                     {
                         sw.Stop();
-                        Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{fileInfo.Name}: {ex.Message}");
+                        Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{filePath.Name}: {ex.Message}");
 
                         logService.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath,
+                            SourceFilePath = filePath.FullName,
                             TargetFilePath = "ERROR",
-                            FileSize = fileInfo.Length,
+                            FileSize = filePath.Length,
                             FileTransferTimeMs = -1,
                             EncryptionTimeMs = 0,
                             Event = "CopyError"
