@@ -1,7 +1,9 @@
 using EasySaveWpf;
 using EasyLog;
+using System.Threading;
 
 namespace EasySaveWpf.ViewModels;
+
 
 public class BackupProcessor
 {
@@ -22,6 +24,15 @@ public class BackupProcessor
         _businessSoftwareMonitor = businessSoftwareMonitor;
         _cryptoSoftService = cryptoSoftService;
         _settings = settings;
+
+    private readonly LogService _logService = new LogService();
+
+    private ManualResetEventSlim _businessSoftwareGate;
+
+    public BackupProcessor(StateManager stateManager, ManualResetEventSlim businessSoftwareGate)
+    {
+        this.stateManager = stateManager;
+        _businessSoftwareGate = businessSoftwareGate;
     }
 
     public bool Execute(BackupJob job)
