@@ -1,6 +1,8 @@
 using EasySaveWpf.ViewModels;
 using EasySaveWpf;
 
+namespace EasySaveWpf.Views;
+
 public class ConsoleView
 {
     private readonly MainViewModel _viewModel;

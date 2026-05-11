@@ -32,8 +32,7 @@
   "prompt_business_processes": "Business process names (separated by ;): ",
   "settings_saved": "Settings saved.",
   "error_finding_files": "An error occurred while finding files: ",
-  "differential_update": "Differential update"
-,
+  "differential_update": "Differential update",
   "gui_title": "EasySave",
   "gui_add_job": "Add Job",
   "gui_run_all": "Run All Jobs",

@@ -32,8 +32,7 @@
   "prompt_business_processes": "Noms des processus métier (séparés par ;) : ",
   "settings_saved": "Paramètres enregistrés.",
   "error_finding_files": "Une erreur s'est produite lors de la recherche des fichiers : ",
-  "differential_update": "Mise à jour différentielle"
-,
+  "differential_update": "Mise à jour différentielle",
   "gui_title": "EasySave",
   "gui_add_job": "Ajouter",
   "gui_run_all": "Tout exécuter",

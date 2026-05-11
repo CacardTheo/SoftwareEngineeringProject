@@ -35,8 +35,8 @@ public class MainViewModel : ViewModelBase
 
     public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
 
-    // Callbacks définis par la MainWindow pour ouvrir les fenêtres de dialogue
-    // Le callback reçoit une Action à appeler quand l'utilisateur valide ou annule
+    // Callbacks d├®finis par la MainWindow pour ouvrir les fen├¬tres de dialogue
+    // Le callback re├ºoit une Action ├á appeler quand l'utilisateur valide ou annule
     public Action<Action<BackupJob?>>? RequestAddJob { get; set; }
     public Action<AppSettings, Action<AppSettings?>>? RequestSettings { get; set; }
 
@@ -60,7 +60,7 @@ public class MainViewModel : ViewModelBase
         _backupProcessor = new BackupProcessor(
             stateManager,
             new BusinessSoftwareMonitor(),
-            new CryptoSoftService(),
+            CryptoSoftService.Instance,
             _settings);
 
         _configManager = new ConfigManager();
@@ -112,7 +112,7 @@ public class MainViewModel : ViewModelBase
             catch (Exception) { }
             finally
             {
-                // On repasse sur le thread UI pour modifier les propriétés liées à l'interface
+                // On repasse sur le thread UI pour modifier les propri├®t├®s li├®es ├á l'interface
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     card.IsRunning = false;
@@ -163,8 +163,8 @@ public class MainViewModel : ViewModelBase
         thread.Start();
     }
 
-    // Ouvre la fenêtre d'ajout de job via un callback
-    // Le callback sera appelé quand l'utilisateur confirme ou annule
+    // Ouvre la fen├¬tre d'ajout de job via un callback
+    // Le callback sera appel├® quand l'utilisateur confirme ou annule
     private void ShowAddJobDialog()
     {
         RequestAddJob?.Invoke(newJob =>
@@ -175,7 +175,7 @@ public class MainViewModel : ViewModelBase
         });
     }
 
-    // Ouvre la fenêtre des paramètres via un callback
+    // Ouvre la fen├¬tre des param├¿tres via un callback
     private void ShowSettingsDialog()
     {
         AppSettings current = GetSettings();

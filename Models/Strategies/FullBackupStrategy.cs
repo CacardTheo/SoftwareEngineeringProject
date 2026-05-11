@@ -1,5 +1,6 @@
 using EasyLog;
 using EasySaveWpf.ViewModels;
+using EasySaveWpf.Utils;
 
 namespace EasySaveWpf
 {

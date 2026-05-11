@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
 
+namespace EasySaveWpf.ViewModels;
+
 public class StateManager
 {
 
