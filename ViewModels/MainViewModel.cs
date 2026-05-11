@@ -60,7 +60,7 @@ public class MainViewModel : ViewModelBase
         _backupProcessor = new BackupProcessor(
             stateManager,
             new BusinessSoftwareMonitor(),
-            new CryptoSoftService(),
+            CryptoSoftService.Instance,
             _settings);
 
         _configManager = new ConfigManager();

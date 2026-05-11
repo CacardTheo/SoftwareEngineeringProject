@@ -21,6 +21,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Resources\Icons\icon.png" />
+  </ItemGroup>
+  <ItemGroup>
   <Reference Include="EasyLog">
     <HintPath>lib\EasyLog.dll</HintPath>
   </Reference>

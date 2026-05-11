@@ -3,6 +3,7 @@
         xmlns:vm="clr-namespace:EasySaveWpf.ViewModels"
         x:Class="EasySaveWpf.Views.AddJobWindow"
         Title="{Binding LangMgr[gui_add_job_title]}"
+        Icon="avares://EasySaveWpf/Resources/Icons/icon.png"
         Width="460" Height="420"
         MinWidth="360" MinHeight="360"
         Background="#1E1E2E"
