@@ -13,17 +13,11 @@ public class StateManager
 
     private LogFormat _format = LogFormat.Json;
 
+    private readonly object _stateLock = new();
+
     public StateManager()
     {
-        string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string easySaveFolder = Path.Combine(appDataFolder, "EasySave");
-
-        if ( !Directory.Exists(easySaveFolder))
-        {
-            Directory.CreateDirectory(easySaveFolder);
-        }
-
-        _stateFolderPath = easySaveFolder;
+        _stateFolderPath = FileHelper.GetAppDataFolder();
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -37,7 +31,7 @@ public class StateManager
         _format = format;
     }
 
-    public void SaveState(List<StateEntry> states)
+    private void SaveState(List<StateEntry> states)
     {
         if (_format == LogFormat.Xml)
         {
@@ -53,15 +47,13 @@ public class StateManager
         File.WriteAllText(jsonPath, jsonString);
     }
 
-    public List<StateEntry> LoadStates()
+    private List<StateEntry> LoadStates()
     {
         if (_format == LogFormat.Xml)
         {
             string xmlPath = Path.Combine(_stateFolderPath, "state.xml");
             if (!File.Exists(xmlPath))
-            {
                 return new List<StateEntry>();
-            }
 
             try
             {
@@ -77,40 +69,41 @@ public class StateManager
 
         string jsonPath = Path.Combine(_stateFolderPath, "state.json");
         if (!File.Exists(jsonPath))
-        {
             return new List<StateEntry>();
-        }
 
         string jsonString = File.ReadAllText(jsonPath);
-
-        List<StateEntry> states = JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
-        return states;
+        return JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
     }
 
     public void UpdateJobState(StateEntry updatedEntry)
     {
-        List<StateEntry> allStates = LoadStates();
-
-        bool found = false;
-        for (int i = 0; i < allStates.Count; i++)
+        lock (_stateLock)
         {
-            if (allStates[i].Name == updatedEntry.Name)
+            List<StateEntry> allStates = LoadStates();
+
+            bool found = false;
+            for (int i = 0; i < allStates.Count; i++)
             {
-                allStates[i] = updatedEntry;
-                found = true;
-                break;
+                if (allStates[i].Name == updatedEntry.Name)
+                {
+                    allStates[i] = updatedEntry;
+                    found = true;
+                    break;
+                }
             }
-        }
 
-        if (!found)
-        {
-            allStates.Add(updatedEntry);
+            if (!found)
+                allStates.Add(updatedEntry);
+
+            SaveState(allStates);
         }
-        SaveState(allStates);   
     }
 
     public void ClearState()
     {
-        SaveState(new List<StateEntry>());
+        lock (_stateLock)
+        {
+            SaveState(new List<StateEntry>());
+        }
     }
 }

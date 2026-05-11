@@ -2,6 +2,19 @@ namespace EasySaveWpf
 {
     public static class FileHelper
     {
+        private static string? _appDataFolder;
+
+        public static string GetAppDataFolder()
+        {
+            if (_appDataFolder != null) return _appDataFolder;
+            string folder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "EasySave");
+            Directory.CreateDirectory(folder);
+            _appDataFolder = folder;
+            return folder;
+        }
+
         public static void CopyFile(string sourcePath, string targetPath, Action<string, string, long>? onBytesWritten = null)
         {
             const int bufferSize = 81920;

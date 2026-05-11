@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using EasyLog;
 using EasySaveWpf.ViewModels;
 
@@ -21,7 +20,8 @@ namespace EasySaveWpf
                 if (!canCopyNextFile())
                     throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
-                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten);
+                static bool IsNewer(FileInfo f, string t) => !File.Exists(t) || f.LastWriteTime > File.GetLastWriteTime(t);
+                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten, shouldCopy: IsNewer);
                 return;
             }
 
@@ -51,34 +51,5 @@ namespace EasySaveWpf
             CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService, onFileCopied, canCopyNextFile, onBytesWritten, shouldCopy: ShouldCopy);
         }
 
-        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action<string, string, long>? onBytesWritten = null)
-        {
-            FileInfo fileInfo = new(sourcePath);
-            if (!Directory.Exists(targetDir))
-                Directory.CreateDirectory(targetDir);
-
-            string targetPath = Path.Combine(targetDir, fileInfo.Name);
-
-            if (!File.Exists(targetPath) || fileInfo.LastWriteTime > File.GetLastWriteTime(targetPath))
-            {
-                Stopwatch sw = Stopwatch.StartNew();
-                FileHelper.CopyFile(sourcePath, targetPath, onBytesWritten);
-                sw.Stop();
-
-                long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
-                onFileCopied(sourcePath, targetPath, fileInfo.Length);
-
-                logService.Save(new LogEntry
-                {
-                    BackupName = job.Name ?? string.Empty,
-                    SourceFilePath = sourcePath,
-                    TargetFilePath = targetPath,
-                    FileSize = fileInfo.Length,
-                    FileTransferTimeMs = sw.ElapsedMilliseconds,
-                    EncryptionTimeMs = encryptionTime,
-                    Event = "FileCopied"
-                });
-            }
-        }
     }
 }

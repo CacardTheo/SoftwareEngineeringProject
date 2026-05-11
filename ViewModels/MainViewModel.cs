@@ -189,7 +189,7 @@ public class MainViewModel : ViewModelBase
 
     private void OnJobProgressChanged(string jobName, BackupStatus status, int progression, string currentFile, bool blocked, string errorMessage)
     {
-        Dispatcher.UIThread.Invoke(() =>
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
             UpdateCardProgress(jobName, status, progression, currentFile, blocked, errorMessage);
         });
@@ -293,7 +293,14 @@ public class MainViewModel : ViewModelBase
             int capturedIndex = indicesToRun[i];
             var thread = new Thread(() =>
             {
-                results[capturedI] = _backupProcessor.Execute(_jobs[capturedIndex], context);
+                try
+                {
+                    results[capturedI] = _backupProcessor.Execute(_jobs[capturedIndex], context);
+                }
+                catch (Exception)
+                {
+                    results[capturedI] = false;
+                }
             });
             threads.Add(thread);
         }
@@ -325,7 +332,7 @@ public class MainViewModel : ViewModelBase
 
     public void UpdateBusinessSoftwareProcesses(IEnumerable<string> processNames)
     {
-        _settings.BusinessSoftwareProcesses = CreateUniqueList(processNames);
+        _settings.BusinessSoftwareProcesses = ToUniqueList(processNames);
         SaveSettings();
     }
 
@@ -344,7 +351,7 @@ public class MainViewModel : ViewModelBase
 
     public void UpdateEncryptedExtensions(IEnumerable<string> extensions)
     {
-        _settings.EncryptedExtensions = CreateUniqueExtensionList(extensions);
+        _settings.EncryptedExtensions = ToUniqueList(extensions, lowercase: true);
         SaveSettings();
     }
 
@@ -359,59 +366,16 @@ public class MainViewModel : ViewModelBase
         _settingsManager.Save(_settings);
     }
 
-    private static List<string> CreateUniqueList(IEnumerable<string> values)
+    private static List<string> ToUniqueList(IEnumerable<string> values, bool lowercase = false)
     {
         var result = new List<string>();
-
         foreach (var value in values)
         {
-            if (string.IsNullOrWhiteSpace(value))
-                continue;
-
-            string cleanValue = value.Trim();
-            bool alreadyAdded = false;
-
-            foreach (string existing in result)
-            {
-                if (string.Equals(existing, cleanValue, StringComparison.OrdinalIgnoreCase))
-                {
-                    alreadyAdded = true;
-                    break;
-                }
-            }
-
-            if (!alreadyAdded)
-                result.Add(cleanValue);
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            string clean = lowercase ? value.Trim().ToLowerInvariant() : value.Trim();
+            if (!result.Contains(clean, StringComparer.OrdinalIgnoreCase))
+                result.Add(clean);
         }
-
-        return result;
-    }
-
-    private static List<string> CreateUniqueExtensionList(IEnumerable<string> values)
-    {
-        var result = new List<string>();
-
-        foreach (var value in values)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                continue;
-
-            string cleanValue = value.Trim().ToLowerInvariant();
-            bool alreadyAdded = false;
-
-            foreach (string existing in result)
-            {
-                if (existing == cleanValue)
-                {
-                    alreadyAdded = true;
-                    break;
-                }
-            }
-
-            if (!alreadyAdded)
-                result.Add(cleanValue);
-        }
-
         return result;
     }
 

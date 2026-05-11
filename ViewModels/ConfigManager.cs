@@ -12,13 +12,7 @@ namespace EasySaveWpf.ViewModels
 
         public ConfigManager()
         {
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folderPath = Path.Combine(appData, "EasySave");
-
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
-
-            _configFilePath = Path.Combine(folderPath, "backup_jobs.json");
+            _configFilePath = Path.Combine(FileHelper.GetAppDataFolder(), "backup_jobs.json");
         }
 
         public void SaveJobs(List<BackupJob> jobs)

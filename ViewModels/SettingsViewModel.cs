@@ -135,28 +135,13 @@ public class SettingsViewModel : ViewModelBase
 
     private static List<string> ParseLines(string multiline)
     {
-        string[] lines = multiline.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var result = new List<string>();
-
-        foreach (string line in lines)
+        foreach (string line in multiline.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = line.Trim();
-            if (trimmed.Length == 0) continue;
-
-            bool alreadyAdded = false;
-            foreach (string existing in result)
-            {
-                if (string.Equals(existing, trimmed, StringComparison.OrdinalIgnoreCase))
-                {
-                    alreadyAdded = true;
-                    break;
-                }
-            }
-
-            if (!alreadyAdded)
+            if (trimmed.Length > 0 && !result.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
                 result.Add(trimmed);
         }
-
         return result;
     }
 }

@@ -139,5 +139,42 @@ namespace EasySaveWpf
             }
             return 0;
         }
+
+        // shouldCopy: returns false to skip the file (used for differential strategy).
+        protected static void CopySingleFile(
+            string sourcePath,
+            string targetDir,
+            BackupJob job,
+            LogService logService,
+            AppSettings settings,
+            CryptoSoftService cryptoService,
+            Action<string, string, long> onFileCopied,
+            Action<string, string, long>? onBytesWritten,
+            Func<FileInfo, string, bool>? shouldCopy = null)
+        {
+            FileInfo fileInfo = new(sourcePath);
+            Directory.CreateDirectory(targetDir);
+            string targetPath = Path.Combine(targetDir, fileInfo.Name);
+
+            if (shouldCopy != null && !shouldCopy(fileInfo, targetPath)) return;
+
+            Stopwatch sw = Stopwatch.StartNew();
+            FileHelper.CopyFile(sourcePath, targetPath, onBytesWritten);
+            sw.Stop();
+
+            long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
+            onFileCopied(sourcePath, targetPath, fileInfo.Length);
+
+            logService.Save(new LogEntry
+            {
+                BackupName = job.Name ?? string.Empty,
+                SourceFilePath = sourcePath,
+                TargetFilePath = targetPath,
+                FileSize = fileInfo.Length,
+                FileTransferTimeMs = sw.ElapsedMilliseconds,
+                EncryptionTimeMs = encryptionTime,
+                Event = "FileCopied"
+            });
+        }
     }
 }

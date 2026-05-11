@@ -8,13 +8,7 @@ public class SettingsManager
 
     public SettingsManager()
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string folderPath = Path.Combine(appData, "EasySave");
-
-        if (!Directory.Exists(folderPath))
-            Directory.CreateDirectory(folderPath);
-
-        _settingsFilePath = Path.Combine(folderPath, "settings.json");
+        _settingsFilePath = Path.Combine(FileHelper.GetAppDataFolder(), "settings.json");
     }
 
     public AppSettings Load()
