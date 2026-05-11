@@ -24,7 +24,7 @@ public class BackupProcessor
         _settings = settings;
     }
 
-    public bool Execute(BackupJob job)
+    public bool Execute(BackupJob job, BackupSyncContext context)
     {
         AppSettings settings = _settings;
         _stateManager.SetFormat(settings.StateFormat);
@@ -42,10 +42,10 @@ public class BackupProcessor
         switch (job.Type)
         {
             case BackupType.Full:
-                strategy = new FullBackupStrategy();
+                strategy = new FullBackupStrategy(context);
                 break;
             case BackupType.Differential:
-                strategy = new DifferentialBackupStrategy();
+                strategy = new DifferentialBackupStrategy(context);
                 break;
             default:
                 throw new ArgumentException($"Unknown backup type: {job.Type}");
@@ -98,8 +98,8 @@ public class BackupProcessor
 
             void OnBytesWritten(string sourceFile, string destFile, long bytes)
             {
-                bytesCopied += bytes;
-                int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0;
+                long current = Interlocked.Add(ref bytesCopied, bytes);
+                int progression = totalSize > 0 ? (int)(current * 100 / totalSize) : 0;
                 if (progression == lastReportedProgression) return;
                 lastReportedProgression = progression;
 

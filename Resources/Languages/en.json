@@ -59,6 +59,7 @@
   "gui_business_processes": "Business Software Processes (one per line)",
   "gui_encrypted_extensions": "Encrypted File Extensions (one per line, e.g. .txt)",
   "gui_prioritized_extensions": "Priority File Extensions (one per line, e.g. .txt)",
+  "gui_large_file_threshold": "Large File Threshold (KB, 0 = disabled)",
   "gui_encryption_key": "Encryption Key",
   "gui_save": "Save",
   "gui_current_file": "Current file:",

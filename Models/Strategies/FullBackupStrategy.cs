@@ -1,20 +1,14 @@
 using System.Diagnostics;
 using EasyLog;
-using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
 namespace EasySaveWpf
 {
-    public class FullBackupStrategy : IBackupStrategy
+    public class FullBackupStrategy : BackupStrategyBase
     {
-        private readonly LanguageManager _languageManager;
+        public FullBackupStrategy(BackupSyncContext context) : base(context) { }
 
-        public FullBackupStrategy()
-        {
-            _languageManager = LanguageManager.GetInstance();
-        }
-
-        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
+        public override void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
@@ -24,7 +18,6 @@ namespace EasySaveWpf
                 if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
                     throw new DirectoryNotFoundException(_languageManager.GetText("log_error_source_not_found"));
 
-                // Si la source est un fichier unique, on le copie directement
                 if (File.Exists(job.SourceDir))
                 {
                     if (!canCopyNextFile())
@@ -45,59 +38,13 @@ namespace EasySaveWpf
                     throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
                 }
 
-                var orderedFiles = files.OrderBy(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLower()) ? 0 : 1);
+                var prioritized = files.Where(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLower())).ToList();
+                var regular = files.Except(prioritized).ToList();
 
-                foreach (var filePath in orderedFiles)
-                {
-                    if (!canCopyNextFile())
-                        throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+                _context.RegisterPriorityFiles(prioritized.Count);
 
-                    string targetPath = filePath.FullName.Replace(job.SourceDir, job.TargetDir);
-
-                    Stopwatch sw = Stopwatch.StartNew();
-                    try
-                    {
-                        string? dir = Path.GetDirectoryName(targetPath);
-                        if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-                        FileHelper.CopyFile(filePath.FullName, targetPath, onBytesWritten);
-                        sw.Stop();
-
-                        long encryptionTime = TryEncrypt(targetPath, filePath.Extension, cryptoService, settings);
-                        onFileCopied(filePath.FullName, targetPath, filePath.Length);
-
-                        logService.Save(new LogEntry
-                        {
-                            BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath.FullName,
-                            TargetFilePath = targetPath,
-                            FileSize = filePath.Length,
-                            FileTransferTimeMs = sw.ElapsedMilliseconds,
-                            EncryptionTimeMs = encryptionTime,
-                            Event = "FileCopied"
-                        });
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        sw.Stop();
-                        Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{filePath.Name}: {ex.Message}");
-
-                        logService.Save(new LogEntry
-                        {
-                            BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath.FullName,
-                            TargetFilePath = "ERROR",
-                            FileSize = filePath.Length,
-                            FileTransferTimeMs = -1,
-                            EncryptionTimeMs = 0,
-                            Event = "CopyError"
-                        });
-                    }
-                }
+                CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService, onFileCopied, canCopyNextFile, onBytesWritten, shouldCopy: (f, t) => true);
+                CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService, onFileCopied, canCopyNextFile, onBytesWritten, shouldCopy: (f, t) => true);
             }
             catch (InvalidOperationException)
             {
@@ -134,16 +81,6 @@ namespace EasySaveWpf
                 EncryptionTimeMs = encryptionTime,
                 Event = "FileCopied"
             });
-        }
-
-        private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
-        {
-            foreach (string ext in settings.EncryptedExtensions)
-            {
-                if (ext.Equals(extension, StringComparison.OrdinalIgnoreCase))
-                    return cryptoService.Encrypt(targetPath, settings.EncryptionKey);
-            }
-            return 0;
         }
     }
 }

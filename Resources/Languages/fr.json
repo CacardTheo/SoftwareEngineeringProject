@@ -59,6 +59,7 @@
   "gui_business_processes": "Logiciels métier (un par ligne)",
   "gui_encrypted_extensions": "Extensions chiffrées (une par ligne, ex. .txt)",
   "gui_prioritized_extensions": "Extension à prioriser lors des backups (une par ligne, ex. .txt)",
+  "gui_large_file_threshold": "Seuil fichiers volumineux (KB, 0 = désactivé)",
   "gui_encryption_key": "Clé de chiffrement",
   "gui_save": "Enregistrer",
   "gui_current_file": "Fichier courant :",

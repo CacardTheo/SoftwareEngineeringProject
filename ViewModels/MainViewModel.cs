@@ -280,17 +280,29 @@ public class MainViewModel : ViewModelBase
         if (_jobs.Count == 0) return false;
 
         List<int> indicesToRun = ParseIndices(input, _jobs.Count);
-        bool allSucceeded = true;
 
-        foreach (int index in indicesToRun)
+        // One shared context for the whole batch: enforces cross-job large-file limit.
+        var context = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+
+        var results = new bool[indicesToRun.Count];
+        var threads = new List<Thread>();
+
+        for (int i = 0; i < indicesToRun.Count; i++)
         {
-            bool succeeded = _backupProcessor.Execute(_jobs[index]);
-            allSucceeded &= succeeded;
-
-            if (!succeeded)
-                break;
+            int capturedI = i;
+            int capturedIndex = indicesToRun[i];
+            var thread = new Thread(() =>
+            {
+                results[capturedI] = _backupProcessor.Execute(_jobs[capturedIndex], context);
+            });
+            threads.Add(thread);
         }
 
+        foreach (var t in threads) t.Start();
+        foreach (var t in threads) t.Join();
+
+        bool allSucceeded = true;
+        foreach (bool r in results) allSucceeded &= r;
         return allSucceeded;
     }
 
@@ -303,7 +315,8 @@ public class MainViewModel : ViewModelBase
     public bool RunJobByIndex(int index)
     {
         if (index < 0 || index >= _jobs.Count) return false;
-        return _backupProcessor.Execute(_jobs[index]);
+        var context = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+        return _backupProcessor.Execute(_jobs[index], context);
     }
 
     public List<BackupJob> GetJobs() => _jobs;

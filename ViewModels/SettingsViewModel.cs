@@ -13,6 +13,7 @@ public class SettingsViewModel : ViewModelBase
     private string _encryptedExtensions = string.Empty;
     private string _prioritizedExtensions = string.Empty;
     private string _encryptionKey = string.Empty;
+    private int _largeFileSizeThresholdKb = 0;
 
     public string Language
     {
@@ -48,6 +49,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _prioritizedExtensions;
         set => SetField(ref _prioritizedExtensions, value);
+    }
+
+    public int LargeFileSizeThresholdKb
+    {
+        get => _largeFileSizeThresholdKb;
+        set => SetField(ref _largeFileSizeThresholdKb, value);
     }
 
     public string EncryptionKey
@@ -104,6 +111,7 @@ public class SettingsViewModel : ViewModelBase
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
         _encryptionKey = current.EncryptionKey;
         _prioritizedExtensions = string.Join(Environment.NewLine, current.PrioritizedExtensions);
+        _largeFileSizeThresholdKb = current.LargeFileSizeThresholdKb;
 
         SaveCommand = new Command(Save);
         CancelCommand = new Command(() => Cancelled?.Invoke());
@@ -119,7 +127,8 @@ public class SettingsViewModel : ViewModelBase
             BusinessSoftwareProcesses = ParseLines(BusinessProcesses),
             EncryptedExtensions = ParseLines(EncryptedExtensions),
             EncryptionKey = EncryptionKey,
-            PrioritizedExtensions = ParseLines(PrioritizedExtensions)
+            PrioritizedExtensions = ParseLines(PrioritizedExtensions),
+            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb
         };
         Saved?.Invoke(updated);
     }
