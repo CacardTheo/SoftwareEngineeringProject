@@ -1,5 +1,6 @@
 using EasyLog;
 using EasySaveWpf;
+using EasySaveWpf.Utils;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
