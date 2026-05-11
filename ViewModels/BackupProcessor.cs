@@ -28,7 +28,12 @@ public class BackupProcessor
     {
         AppSettings settings = _settings;
         _stateManager.SetFormat(settings.StateFormat);
-        var logService = new LogService(settings.LogFormat);
+        
+        var logService = new LogService(
+            settings.LogFormat,
+            settings.LogMode,
+            settings.DockerLogServerUrl
+        );
 
         if (IsBusinessSoftwareRunning(settings, out string detectedBeforeStart))
         {
