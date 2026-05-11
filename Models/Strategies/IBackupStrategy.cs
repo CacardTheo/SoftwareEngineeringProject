@@ -1,7 +1,11 @@
-using SoftwareEngineeringProject;
+using EasyLog;
+using EasySaveWpf.ViewModels;
 
-public interface IBackupStrategy
+namespace EasySaveWpf
 {
-    // Callback: (sourceFile, destFile, fileSize) called after each file is copied
-    void Backup(BackupJob job, Action<string, string, long> onFileCopied);
+    public interface IBackupStrategy
+    {
+        void Backup(BackupJob job, ViewModels.LogService logService, AppSettings settings, ViewModels.CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null);
+    }
+}
 }

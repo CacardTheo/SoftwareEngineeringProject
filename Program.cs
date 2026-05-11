@@ -1,37 +1,31 @@
-﻿using System;
+using Avalonia;
+using EasySaveWpf.ViewModels;
 
-namespace SoftwareEngineeringProject
+namespace EasySaveWpf;
+
+class Program
 {
-    class Program
-    // Bootstrapping of the application
+    [STAThread]
+    public static void Main(string[] args)
     {
-        /// <summary>
-        /// Entry point of the application.
-        /// </summary>
-        /// <param name="args">Command line arguments passed to the application.</param>
-        static void Main(string[] args)
+        if (args.Length > 0)
         {
-            try
-            {
-                // Set console encoding to UTF8 to handle special characters if necessary
-                Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-                // Instantiate the View (Presentation Layer)
-                ConsoleView view = new ConsoleView();
-
-                // Run the application
-                view.Run(args);
-            }
-            catch (Exception ex)
-            {
-                // Global error handling to prevent the console from closing abruptly
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"A critical error occurred: {ex.Message}");
-                Console.ResetColor();
-                
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey();
-            }
+            RunCli(args[0]);
+            return;
         }
+
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
+
+    private static void RunCli(string input)
+    {
+        var model = new MainViewModel();
+        bool success = model.RunJob(input);
+        Environment.Exit(success ? 0 : 1);
+    }
+
+    public static AppBuilder BuildAvaloniaApp() =>
+        AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .LogToTrace();
 }
