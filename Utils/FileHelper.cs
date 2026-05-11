@@ -1,4 +1,4 @@
-namespace EasySaveWpf
+namespace EasySaveWpf.Utils
 {
     public static class FileHelper
     {
