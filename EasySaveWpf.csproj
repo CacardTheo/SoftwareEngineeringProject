@@ -21,6 +21,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaXaml Remove="EasySaveLogServer\**" />
+    <Compile Remove="EasySaveLogServer\**" />
+    <EmbeddedResource Remove="EasySaveLogServer\**" />
+    <None Remove="EasySaveLogServer\**" />
+  </ItemGroup>
+  <ItemGroup>
   <Reference Include="EasyLog">
     <HintPath>lib\EasyLog.dll</HintPath>
   </Reference>
