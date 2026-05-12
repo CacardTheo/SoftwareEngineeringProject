@@ -18,6 +18,9 @@ public class MainViewModel : ViewModelBase
 
     private readonly List<BackupJob> _jobs;
 
+    private readonly ManualResetEventSlim _businessSoftwareGate = new ManualResetEventSlim(true);
+    private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
+
     public ObservableCollection<BackupJobViewModel> Jobs { get; } = new();
 
     private string _selectedLanguage = "en";
@@ -57,11 +60,26 @@ public class MainViewModel : ViewModelBase
         StateManager stateManager = new StateManager();
         stateManager.SetFormat(_settings.StateFormat);
 
+        _businessSoftwareMonitor = new BusinessSoftwareMonitor();
+        
+        _businessSoftwareMonitor.OnBusinessSoftwareDetected += (processName) =>
+        {
+            _businessSoftwareGate.Reset(); // to pause all jobs
+        };
+
+        _businessSoftwareMonitor.OnBusinessSoftwareClosed += () =>
+        {
+            _businessSoftwareGate.Set(); // to resume all jobs
+        };
+
+        _businessSoftwareMonitor.StartMonitoring(_settings.BusinessSoftwareProcesses);
+
         _backupProcessor = new BackupProcessor(
             stateManager,
-            new BusinessSoftwareMonitor(),
+            _businessSoftwareMonitor,
             new CryptoSoftService(),
-            _settings);
+            _settings,
+            _businessSoftwareGate);
 
         _configManager = new ConfigManager();
         _jobs = _configManager.LoadJobs();
@@ -75,6 +93,11 @@ public class MainViewModel : ViewModelBase
         RunAllCommand = new Command(RunAll, () => !_isRunningAll);
         AddJobCommand = new Command(ShowAddJobDialog);
         OpenSettingsCommand = new Command(ShowSettingsDialog);
+    }
+
+    public void Cleanup()
+    {
+        _businessSoftwareMonitor.StopMonitoring();
     }
 
     private void FillJobCards()
@@ -326,6 +349,8 @@ public class MainViewModel : ViewModelBase
         _languageManager.SetLanguage(updated.Language);
         _settings.Language = updated.Language;
         SaveSettings();
+        _businessSoftwareMonitor.StopMonitoring();
+        _businessSoftwareMonitor.StartMonitoring(_settings.BusinessSoftwareProcesses);
     }
 
     public void UpdateEncryptedExtensions(IEnumerable<string> extensions)

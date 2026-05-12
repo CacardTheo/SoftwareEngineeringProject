@@ -14,7 +14,7 @@ namespace EasySaveWpf
             _languageManager = LanguageManager.GetInstance();
         }
 
-        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
+        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action waitIfPaused, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
@@ -27,8 +27,7 @@ namespace EasySaveWpf
                 // Si la source est un fichier unique, on le copie directement
                 if (File.Exists(job.SourceDir))
                 {
-                    if (!canCopyNextFile())
-                        throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+                    waitIfPaused();
 
                     CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten);
                     return;
@@ -46,8 +45,7 @@ namespace EasySaveWpf
 
                 foreach (string filePath in files)
                 {
-                    if (!canCopyNextFile())
-                        throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
+                    waitIfPaused();
 
                     FileInfo fileInfo = new FileInfo(filePath);
                     string targetPath = filePath.Replace(job.SourceDir, job.TargetDir);
@@ -75,10 +73,6 @@ namespace EasySaveWpf
                             Event = "FileCopied"
                         });
                     }
-                    catch (InvalidOperationException)
-                    {
-                        throw;
-                    }
                     catch (Exception ex)
                     {
                         sw.Stop();
@@ -97,10 +91,7 @@ namespace EasySaveWpf
                     }
                 }
             }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
+          
             catch (UnauthorizedAccessException ex)
             {
                 throw new UnauthorizedAccessException(_languageManager.GetText("log_error_access_denied") + ex.Message, ex);

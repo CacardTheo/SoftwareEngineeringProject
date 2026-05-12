@@ -11,6 +11,8 @@ public class BackupProcessor
     private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
     private readonly CryptoSoftService _cryptoSoftService;
     private readonly AppSettings _settings;
+    private readonly ManualResetEventSlim _businessSoftwareGate;
+
 
     public event Action<string, BackupStatus, int, string, bool, string>? ProgressChanged;
 
@@ -18,35 +20,24 @@ public class BackupProcessor
         StateManager stateManager,
         BusinessSoftwareMonitor businessSoftwareMonitor,
         CryptoSoftService cryptoSoftService,
-        AppSettings settings)
+        AppSettings settings,
+        ManualResetEventSlim businessSoftwareGate)
     {
         _stateManager = stateManager;
         _businessSoftwareMonitor = businessSoftwareMonitor;
         _cryptoSoftService = cryptoSoftService;
         _settings = settings;
-
-    private readonly LogService _logService = new LogService();
-
-    private ManualResetEventSlim _businessSoftwareGate;
-
-    public BackupProcessor(StateManager stateManager, ManualResetEventSlim businessSoftwareGate)
-    {
-        this.stateManager = stateManager;
         _businessSoftwareGate = businessSoftwareGate;
     }
 
+   
     public bool Execute(BackupJob job)
     {
         AppSettings settings = _settings;
         _stateManager.SetFormat(settings.StateFormat);
         var logService = new LogService(settings.LogFormat);
 
-        if (IsBusinessSoftwareRunning(settings, out string detectedBeforeStart))
-        {
-            LogBusinessSoftwareBlock(job, detectedBeforeStart, logService, "BlockedBeforeStart");
-            RaiseProgress(job.Name, BackupStatus.Inactive, 0, blocked: true);
-            return false;
-        }
+        _businessSoftwareGate.Wait();
 
         IBackupStrategy strategy;
 
@@ -105,7 +96,31 @@ public class BackupProcessor
             int filesCopied = 0;
             int lastReportedProgression = -1;
 
-            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue, OnBytesWritten);
+            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, WaitIfPaused, OnBytesWritten);
+
+            void WaitIfPaused()
+            {
+
+                bool wasPaused = !_businessSoftwareGate.IsSet;
+
+                if (wasPaused)
+                {
+                    RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
+
+                    IsBusinessSoftwareRunning(settings, out string detectedProcess);
+                    LogBusinessSoftwareBlock(job, detectedProcess, logService, "PausedDuringExecution");
+
+                }
+
+                _businessSoftwareGate.Wait();
+
+                if (wasPaused)
+                {
+
+                    int progression = totalSize > 0 ? (int)(bytesCopied * 100 / totalSize) : 0; 
+                    RaiseProgress(job.Name, BackupStatus.In_Progress, progression);
+                }
+            }
 
             void OnBytesWritten(string sourceFile, string destFile, long bytes)
             {
@@ -152,10 +167,8 @@ public class BackupProcessor
                 RaiseProgress(job.Name, BackupStatus.In_Progress, progression, currentFile: sourceFile);
             }
 
-            bool CanContinue() => !IsBusinessSoftwareRunning(settings, out _);
-
             _stateManager.UpdateJobState(new StateEntry
-            {
+            {   
                 Name = job.Name ?? "Unnamed Job",
                 SourceFilePath = job.SourceDir ?? string.Empty,
                 TargetFilePath = job.TargetDir ?? string.Empty,
@@ -171,44 +184,22 @@ public class BackupProcessor
             RaiseProgress(job.Name, BackupStatus.Ended, 100);
             return true;
         }
-        catch (InvalidOperationException ex)
-        {
-            if (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
-            {
-                IsBusinessSoftwareRunning(settings, out string detectedProcess);
-                LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
-                RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
-
-                _stateManager.UpdateJobState(new StateEntry
-                {
-                    Name = job.Name ?? "Unnamed Job",
-                    SourceFilePath = job.SourceDir ?? string.Empty,
-                    TargetFilePath = job.TargetDir ?? string.Empty,
-                    State = BackupStatus.Inactive,
-                    LastRun = DateTime.Now
-                });
-
-                return false;
-            }
-
-            throw;
-        }
         catch (Exception ex)
         {
             _stateManager.UpdateJobState(new StateEntry
-            {
-                Name = job.Name ?? "Unnamed Job",
-                SourceFilePath = job.SourceDir ?? string.Empty,
-                TargetFilePath = job.TargetDir ?? string.Empty,
-                State = BackupStatus.Error,
-                TotalFilesToCopy = 0,
-                TotalFilesSize = 0,
-                NbFilesLeftToDo = 0,
-                SizeRemaining = 0,
-                Progression = 0,
-                LastRun = DateTime.Now
-            });
-
+                {   
+                    Name = job.Name ?? "Unnamed Job",
+                    SourceFilePath = job.SourceDir ?? string.Empty,
+                    TargetFilePath = job.TargetDir ?? string.Empty,
+                    State = BackupStatus.Error,
+                    TotalFilesToCopy = 0,
+                    TotalFilesSize = 0,
+                    NbFilesLeftToDo = 0,
+                    SizeRemaining = 0,
+                    Progression = 0,
+                    LastRun = DateTime.Now
+                });
+                         
             logService.Save(new LogEntry
             {
                 BackupName = job.Name ?? string.Empty,
