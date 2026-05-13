@@ -7,7 +7,7 @@ namespace EasySaveWpf
     {
         void Backup(
             BackupJob job,
-            LogService logService,
+            BackupLogRouter logService,
             AppSettings settings,
             CryptoSoftService cryptoService,
             Action<string, string, long> onFileCopied,

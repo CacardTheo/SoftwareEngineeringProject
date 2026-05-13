@@ -164,10 +164,9 @@ public class SettingsViewModel : ViewModelBase
             EncryptedExtensions = ParseLines(EncryptedExtensions),
             EncryptionKey = EncryptionKey,
             LogMode = LogMode,
-            DockerLogServerUrl = DockerLogServerUrl.Trim()
+            DockerLogServerUrl = DockerLogServerUrl.Trim(),
             PrioritizedExtensions = ParseLines(PrioritizedExtensions),
-            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb,
-            EncryptionKey = EncryptionKey
+            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb
         };
         Saved?.Invoke(updated);
     }

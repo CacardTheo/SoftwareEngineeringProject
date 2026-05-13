@@ -23,16 +23,18 @@ internal static class CentralLogSocketClient
         if (!LogSocketEndpoint.TryParse(settings.DockerLogServerUrl, out string host, out int port))
             return;
 
-        _ = Task.Run(() => TrySendOnceAsync(host, port, entry));
+        string format = settings.LogFormat == LogFormat.Xml ? "xml" : "json";
+        _ = Task.Run(() => TrySendOnceAsync(host, port, entry, format));
     }
 
-    private static async Task TrySendOnceAsync(string host, int port, LogEntry entry)
+    private static async Task TrySendOnceAsync(string host, int port, LogEntry entry, string format)
     {
         try
         {
             JsonObject payload = JsonNode.Parse(JsonSerializer.Serialize(entry, JsonOptions))!.AsObject();
             payload["machineName"] = Environment.MachineName;
             payload["userName"] = Environment.UserName;
+            payload["logFormat"] = format;
 
             byte[] body = JsonSerializer.SerializeToUtf8Bytes(payload, JsonOptions);
 

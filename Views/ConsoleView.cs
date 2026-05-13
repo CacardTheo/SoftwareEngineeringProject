@@ -123,7 +123,7 @@ public class ConsoleView
             ? EasyLog.LogFormat.Xml
             : EasyLog.LogFormat.Json;
 
-        Console.Write(_viewModel.GetText("prompt_log_mode"));
+        Console.Write(MainViewModel.GetText("prompt_log_mode"));
         string modeLine = (Console.ReadLine() ?? "2").Trim();
         settings.LogMode = modeLine switch
         {
@@ -132,12 +132,12 @@ public class ConsoleView
             _ => LogMode.Local
         };
 
-        Console.Write(_viewModel.GetText("prompt_log_socket"));
+        Console.Write(MainViewModel.GetText("prompt_log_socket"));
         string socketLine = (Console.ReadLine() ?? string.Empty).Trim();
         if (socketLine.Length > 0)
             settings.DockerLogServerUrl = socketLine;
 
-        Console.Write(_viewModel.GetText("prompt_business_processes"));
+        Console.Write(MainViewModel.GetText("prompt_business_processes"));
         string processInput = Console.ReadLine() ?? string.Empty;
         settings.BusinessSoftwareProcesses = processInput
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

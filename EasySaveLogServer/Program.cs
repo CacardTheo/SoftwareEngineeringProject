@@ -78,14 +78,20 @@ internal static class CentralLogServer
             entryObj["SenderIP"] = senderIp;
             entryObj["ReceivedAt"] = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
+            bool useXml = entryObj["logFormat"]?.GetValue<string>()
+                              ?.Equals("xml", StringComparison.OrdinalIgnoreCase) == true;
+            entryObj.Remove("logFormat");
+
             string today = DateTime.UtcNow.ToString("yyyy-MM-dd");
             string jsonPath = Path.Combine(logsFolder, $"{today}.json");
-            string xmlPath = Path.Combine(logsFolder, $"{today}.xml");
+            string xmlPath  = Path.Combine(logsFolder, $"{today}.xml");
 
             lock (fileLock)
             {
                 var logs = new JsonArray();
-                if (File.Exists(jsonPath))
+                string existingPath = useXml ? xmlPath : jsonPath;
+
+                if (!useXml && File.Exists(jsonPath))
                 {
                     try
                     {
@@ -98,18 +104,18 @@ internal static class CentralLogServer
                             logs.Add(one);
                         }
                     }
-                    catch
-                    {
-                        logs = new JsonArray();
-                    }
+                    catch { logs = new JsonArray(); }
                 }
 
                 logs.Add(entryObj);
 
-                var writeOptions = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(jsonPath, logs.ToJsonString(writeOptions));
-
-                WriteLogsAsXml(logs, xmlPath);
+                if (useXml)
+                    WriteLogsAsXml(logs, xmlPath);
+                else
+                {
+                    var writeOptions = new JsonSerializerOptions { WriteIndented = true };
+                    File.WriteAllText(jsonPath, logs.ToJsonString(writeOptions));
+                }
             }
         }
         catch

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using EasyLog;
+using EasySaveWpf.Services;
 using EasySaveWpf.Utils;
 using EasySaveWpf.ViewModels;
 
@@ -19,7 +20,7 @@ namespace EasySaveWpf
 
         public abstract void Backup(
             BackupJob job,
-            LogService logService,
+            BackupLogRouter logService,
             AppSettings settings,
             CryptoSoftService cryptoService,
             Action<string, string, long> onFileCopied,
@@ -38,7 +39,7 @@ namespace EasySaveWpf
             List<FileInfo> group,
             bool isPriorityGroup,
             BackupJob job,
-            LogService logService,
+            BackupLogRouter logService,
             AppSettings settings,
             CryptoSoftService cryptoService,
             Action<string, string, long> onFileCopied,
@@ -162,7 +163,7 @@ namespace EasySaveWpf
             string sourcePath,
             string targetDir,
             BackupJob job,
-            LogService logService,
+            BackupLogRouter logService,
             AppSettings settings,
             CryptoSoftService cryptoService,
             Action<string, string, long> onFileCopied,

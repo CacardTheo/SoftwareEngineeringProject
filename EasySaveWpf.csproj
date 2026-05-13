@@ -21,6 +21,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Resources\Images\**" />
+  </ItemGroup>
+  <ItemGroup>
     <AvaloniaXaml Remove="EasySaveLogServer\**" />
     <Compile Remove="EasySaveLogServer\**" />
     <EmbeddedResource Remove="EasySaveLogServer\**" />

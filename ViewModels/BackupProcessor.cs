@@ -85,7 +85,7 @@ public class BackupProcessor
 
         try
         {
-            strategy.Backup(job, logService, settings, _cryptoSoftService,
+            strategy.Backup(job, logRouter, settings, _cryptoSoftService,
                 OnFileCopied, _businessSoftwareGate, userPauseGate, cancellationToken, OnBytesWritten);
 
             void OnBytesWritten(string sourceFile, string destFile, long bytes)
@@ -206,8 +206,9 @@ public class BackupProcessor
     }
 
     private void RaiseProgress(string? jobName, BackupStatus status, int progression,
-        string currentFile = "", bool blocked = false, string errorMessage = "")
+        string currentFile = "", string errorMessage = "")
     {
+        bool blocked = !_businessSoftwareGate.IsSet;
         ProgressChanged?.Invoke(jobName ?? string.Empty, status, progression, currentFile, blocked, errorMessage);
     }
 

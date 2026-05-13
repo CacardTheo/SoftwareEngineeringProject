@@ -11,7 +11,7 @@ namespace EasySaveWpf
         public DifferentialBackupStrategy(BackupSyncContext context) : base(context) { }
         public override void Backup(
             BackupJob job,
-            LogService logService,
+            BackupLogRouter logService,
             AppSettings settings,
             CryptoSoftService cryptoService,
             Action<string, string, long> onFileCopied,

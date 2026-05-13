@@ -98,6 +98,7 @@ public class MainViewModel : ViewModelBase
         _businessSoftwareGate.Dispose();
         foreach (BackupJobViewModel card in Jobs)
             card.Dispose();
+        CryptoSoftService.Instance.Dispose();
     }
 
     private void FillJobCards()
@@ -416,7 +417,6 @@ public class MainViewModel : ViewModelBase
         _settings.EncryptionKey = updated.EncryptionKey;
         _settings.LogMode = updated.LogMode;
         _settings.DockerLogServerUrl = updated.DockerLogServerUrl;
-        _languageManager.SetLanguage(updated.Language);
         LanguageManager.Instance.SetLanguage(updated.Language);
         _settings.Language = updated.Language;
         SaveSettings();
