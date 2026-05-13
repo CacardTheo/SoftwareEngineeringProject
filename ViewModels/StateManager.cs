@@ -11,12 +11,9 @@ public class StateManager
 {
 
     private readonly string _stateFolderPath;
-
     private readonly JsonSerializerOptions _jsonOptions;
-
-    private LogFormat _format = LogFormat.Json;
-
     private readonly object _stateLock = new();
+    private LogFormat _format = LogFormat.Json;
 
     public StateManager()
     {
@@ -74,8 +71,15 @@ public class StateManager
         if (!File.Exists(jsonPath))
             return new List<StateEntry>();
 
-        string jsonString = File.ReadAllText(jsonPath);
-        return JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
+        try
+        {
+            string jsonString = File.ReadAllText(jsonPath);
+            return JsonSerializer.Deserialize<List<StateEntry>>(jsonString, _jsonOptions) ?? new List<StateEntry>();
+        }
+        catch
+        {
+            return new List<StateEntry>();
+        }
     }
 
     public void UpdateJobState(StateEntry updatedEntry)

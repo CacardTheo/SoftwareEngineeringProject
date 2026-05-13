@@ -118,7 +118,7 @@ namespace EasySaveWpf.ViewModels
         }
         public string GetText(string key) => _translations != null && _translations.ContainsKey(key) ? _translations[key] : key;
 
-        // Lit une clé dans un fichier de langue précis, sans changer la langue courante
+        // Reads a key from a specific language file without changing the current language
         public string GetTextForLanguage(string lang, string key)
         {
             try

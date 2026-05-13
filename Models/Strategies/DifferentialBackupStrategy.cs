@@ -8,7 +8,16 @@ namespace EasySaveWpf
     {
         public DifferentialBackupStrategy(BackupSyncContext context) : base(context) { }
 
-        public override void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
+        public override void Backup(
+            BackupJob job,
+            LogService logService,
+            AppSettings settings,
+            CryptoSoftService cryptoService,
+            Action<string, string, long> onFileCopied,
+            ManualResetEventSlim businessSoftwareGate,
+            ManualResetEventSlim userPauseGate,
+            CancellationToken cancellationToken,
+            Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
@@ -18,18 +27,16 @@ namespace EasySaveWpf
 
             if (File.Exists(job.SourceDir))
             {
-                if (!canCopyNextFile())
-                    throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
-
                 static bool IsNewer(FileInfo f, string t) => !File.Exists(t) || f.LastWriteTime > File.GetLastWriteTime(t);
-                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten, shouldCopy: IsNewer);
+                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService,
+                    onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: IsNewer);
                 return;
             }
 
             if (!Directory.Exists(job.TargetDir))
                 Directory.CreateDirectory(job.TargetDir);
 
-            DirectoryInfo sourceInfo = new DirectoryInfo(job.SourceDir);
+            DirectoryInfo sourceInfo = new(job.SourceDir);
             FileInfo[] files;
             try
             {
@@ -40,7 +47,7 @@ namespace EasySaveWpf
                 throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
             }
 
-            var prioritized = files.Where(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLower())).ToList();
+            var prioritized = files.Where(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLowerInvariant())).ToList();
             var regular = files.Except(prioritized).ToList();
 
             _context.RegisterPriorityFiles(prioritized.Count);
@@ -48,9 +55,10 @@ namespace EasySaveWpf
             static bool ShouldCopy(FileInfo f, string t) =>
                 !File.Exists(t) || f.LastWriteTime > File.GetLastWriteTime(t);
 
-            CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService, onFileCopied, canCopyNextFile, onBytesWritten, shouldCopy: ShouldCopy);
-            CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService, onFileCopied, canCopyNextFile, onBytesWritten, shouldCopy: ShouldCopy);
+            CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService,
+                onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: ShouldCopy);
+            CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService,
+                onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: ShouldCopy);
         }
-
     }
 }

@@ -6,7 +6,7 @@ namespace EasySaveWpf.Views;
 
 public partial class SettingsWindow : Avalonia.Controls.Window
 {
-    // Événements levés quand l'utilisateur sauvegarde ou annule
+    // Events raised when the user saves or cancels
     public event Action<AppSettings>? Saved;
     public event Action? Cancelled;
 

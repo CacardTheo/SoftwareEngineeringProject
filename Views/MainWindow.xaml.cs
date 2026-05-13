@@ -6,15 +6,16 @@ namespace EasySaveWpf.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly MainViewModel _vm;
+
     public MainWindow()
     {
         InitializeComponent();
 
-        var vm = new MainViewModel();
+        _vm = new MainViewModel();
 
-        // On passe des callbacks au ViewModel pour qu'il puisse
-        // demander l'ouverture d'une fenêtre sans connaître la View
-        vm.RequestAddJob = callback =>
+        // Pass callbacks to the ViewModel so it can request window openings without knowing the View layer
+        _vm.RequestAddJob = callback =>
         {
             var dialog = new AddJobWindow();
             dialog.JobCreated += job => callback(job);
@@ -22,7 +23,7 @@ public partial class MainWindow : Window
             dialog.Show(this);
         };
 
-        vm.RequestSettings = (current, callback) =>
+        _vm.RequestSettings = (current, callback) =>
         {
             var dialog = new SettingsWindow(current);
             dialog.Saved += settings => callback(settings);
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
             dialog.Show(this);
         };
 
-        DataContext = vm;
+        DataContext = _vm;
+        Closing += (_, _) => _vm.Cleanup();
     }
 }

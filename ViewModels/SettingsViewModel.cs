@@ -12,8 +12,8 @@ public class SettingsViewModel : ViewModelBase
     private string _businessProcesses = string.Empty;
     private string _encryptedExtensions = string.Empty;
     private string _prioritizedExtensions = string.Empty;
-    private string _encryptionKey = string.Empty;
     private int _largeFileSizeThresholdKb = 0;
+    private string _encryptionKey = string.Empty;
 
     public string Language
     {
@@ -65,8 +65,7 @@ public class SettingsViewModel : ViewModelBase
 
     public List<string> AvailableLanguages => LangMgr.GetAvailableLanguages();
 
-    // Affiche le nom de chaque langue dans sa propre langue, ex: "English / Français / Русский"
-    // Reste lisible quelle que soit la langue active
+    // Displays each language name in its own language, e.g. "English / Français / Русский" — readable regardless of the active language
     public string LanguageSelectorLabel
     {
         get
@@ -109,9 +108,9 @@ public class SettingsViewModel : ViewModelBase
         _stateFormat = current.StateFormat;
         _businessProcesses = string.Join(Environment.NewLine, current.BusinessSoftwareProcesses);
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
-        _encryptionKey = current.EncryptionKey;
         _prioritizedExtensions = string.Join(Environment.NewLine, current.PrioritizedExtensions);
         _largeFileSizeThresholdKb = current.LargeFileSizeThresholdKb;
+        _encryptionKey = current.EncryptionKey;
 
         SaveCommand = new Command(Save);
         CancelCommand = new Command(() => Cancelled?.Invoke());
@@ -126,9 +125,9 @@ public class SettingsViewModel : ViewModelBase
             StateFormat = StateFormat,
             BusinessSoftwareProcesses = ParseLines(BusinessProcesses),
             EncryptedExtensions = ParseLines(EncryptedExtensions),
-            EncryptionKey = EncryptionKey,
             PrioritizedExtensions = ParseLines(PrioritizedExtensions),
-            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb
+            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb,
+            EncryptionKey = EncryptionKey
         };
         Saved?.Invoke(updated);
     }

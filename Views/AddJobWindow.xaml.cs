@@ -6,7 +6,7 @@ namespace EasySaveWpf.Views;
 
 public partial class AddJobWindow : Avalonia.Controls.Window
 {
-    // Événements levés quand l'utilisateur confirme ou annule
+    // Events raised when the user confirms or cancels
     public event Action<BackupJob>? JobCreated;
     public event Action? Cancelled;
 

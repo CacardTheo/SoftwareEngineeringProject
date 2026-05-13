@@ -10,13 +10,15 @@ namespace EasySaveWpf.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-    private readonly LanguageManager _languageManager;
     private readonly SettingsManager _settingsManager;
     private readonly AppSettings _settings;
     private readonly BackupProcessor _backupProcessor;
     private readonly ConfigManager _configManager;
 
     private readonly List<BackupJob> _jobs;
+
+    private readonly ManualResetEventSlim _businessSoftwareGate = new ManualResetEventSlim(true);
+    private readonly BusinessSoftwareMonitor _businessSoftwareMonitor;
 
     public ObservableCollection<BackupJobViewModel> Jobs { get; } = new();
 
@@ -35,8 +37,7 @@ public class MainViewModel : ViewModelBase
 
     public List<string> AvailableLanguages { get; } = new() { "en", "fr" };
 
-    // Callbacks d├®finis par la MainWindow pour ouvrir les fen├¬tres de dialogue
-    // Le callback re├ºoit une Action ├á appeler quand l'utilisateur valide ou annule
+    // Callbacks set by MainWindow to open dialog windows; the callback is invoked when the user confirms or cancels
     public Action<Action<BackupJob?>>? RequestAddJob { get; set; }
     public Action<AppSettings, Action<AppSettings?>>? RequestSettings { get; set; }
 
@@ -48,20 +49,34 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        _languageManager = LanguageManager.GetInstance();
         _settingsManager = new SettingsManager();
         _settings = _settingsManager.Load();
 
-        _languageManager.SetLanguage(_settings.Language);
+        LanguageManager.Instance.SetLanguage(_settings.Language);
 
         StateManager stateManager = new StateManager();
         stateManager.SetFormat(_settings.StateFormat);
 
+        _businessSoftwareMonitor = new BusinessSoftwareMonitor();
+        
+        _businessSoftwareMonitor.OnBusinessSoftwareDetected += (processName) =>
+        {
+            _businessSoftwareGate.Reset(); // to pause all jobs
+        };
+
+        _businessSoftwareMonitor.OnBusinessSoftwareClosed += () =>
+        {
+            _businessSoftwareGate.Set(); // to resume all jobs
+        };
+
+        _businessSoftwareMonitor.StartMonitoring(_settings.BusinessSoftwareProcesses);
+
         _backupProcessor = new BackupProcessor(
             stateManager,
-            new BusinessSoftwareMonitor(),
+            _businessSoftwareMonitor,
             CryptoSoftService.Instance,
-            _settings);
+            _settings,
+            _businessSoftwareGate);
 
         _configManager = new ConfigManager();
         _jobs = _configManager.LoadJobs();
@@ -75,6 +90,14 @@ public class MainViewModel : ViewModelBase
         RunAllCommand = new Command(RunAll, () => !_isRunningAll);
         AddJobCommand = new Command(ShowAddJobDialog);
         OpenSettingsCommand = new Command(ShowSettingsDialog);
+    }
+
+    public void Cleanup()
+    {
+        _businessSoftwareMonitor.StopMonitoring();
+        _businessSoftwareGate.Dispose();
+        foreach (BackupJobViewModel card in Jobs)
+            card.Dispose();
     }
 
     private void FillJobCards()
@@ -93,29 +116,32 @@ public class MainViewModel : ViewModelBase
             onDelete: DeleteCard);
     }
 
-    // Lance le backup d'une carte sur un thread de fond
-    // pour ne pas bloquer le thread UI pendant la copie des fichiers
     private void RunCard(BackupJobViewModel card)
     {
+        card.ResetForNewRun();
         card.IsRunning = true;
         card.Status = BackupStatus.In_Progress;
         card.Progression = 0;
 
         int index = _jobs.IndexOf(card.Job);
+        var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+        var userPauseGate = card.UserPauseGate;
+        var cancellationToken = card.CancellationToken;
 
         Thread thread = new Thread(() =>
         {
             try
             {
-                RunJobByIndex(index);
+                RunJobByIndex(index, syncContext, userPauseGate, cancellationToken);
             }
             catch (Exception) { }
             finally
             {
-                // On repasse sur le thread UI pour modifier les propri├®t├®s li├®es ├á l'interface
+                syncContext.Dispose();
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     card.IsRunning = false;
+                    card.IsPaused = false;
                 });
             }
         });
@@ -129,42 +155,71 @@ public class MainViewModel : ViewModelBase
         if (DeleteJob(index))
         {
             Jobs.Remove(card);
+            card.Dispose();
         }
     }
 
-    // Lance tous les backups sur un thread de fond
     private void RunAll()
     {
         _isRunningAll = true;
         RunAllCommand.RaiseCanExecuteChanged();
 
-        foreach (BackupJobViewModel card in Jobs)
-            card.IsRunning = true;
-
-        Thread thread = new Thread(() =>
+        var cards = Jobs.ToList();
+        foreach (BackupJobViewModel card in cards)
         {
-            try
+            card.ResetForNewRun();
+            card.IsRunning = true;
+            card.Status = BackupStatus.In_Progress;
+            card.Progression = 0;
+        }
+
+        Thread coordinator = new Thread(() =>
+        {
+            var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+            var jobThreads = new List<Thread>();
+
+            foreach (BackupJobViewModel card in cards)
             {
-                RunAllJobs();
-            }
-            catch (Exception) { }
-            finally
-            {
-                Dispatcher.UIThread.InvokeAsync(() =>
+                int index = _jobs.IndexOf(card.Job);
+                var userPauseGate = card.UserPauseGate;
+                var cancellationToken = card.CancellationToken;
+                BackupJobViewModel captured = card;
+
+                Thread jobThread = new Thread(() =>
                 {
-                    _isRunningAll = false;
-                    RunAllCommand.RaiseCanExecuteChanged();
-                    foreach (BackupJobViewModel card in Jobs)
-                        card.IsRunning = false;
+                    try
+                    {
+                        RunJobByIndex(index, syncContext, userPauseGate, cancellationToken);
+                    }
+                    catch (Exception) { }
+                    finally
+                    {
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            captured.IsRunning = false;
+                            captured.IsPaused = false;
+                        });
+                    }
                 });
+                jobThread.IsBackground = true;
+                jobThreads.Add(jobThread);
             }
+
+            foreach (var t in jobThreads) t.Start();
+            foreach (var t in jobThreads) t.Join();
+            syncContext.Dispose();
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _isRunningAll = false;
+                RunAllCommand.RaiseCanExecuteChanged();
+            });
         });
-        thread.IsBackground = true;
-        thread.Start();
+        coordinator.IsBackground = true;
+        coordinator.Start();
     }
 
-    // Ouvre la fen├¬tre d'ajout de job via un callback
-    // Le callback sera appel├® quand l'utilisateur confirme ou annule
+    // Opens the add-job dialog via a callback invoked when the user confirms or cancels
     private void ShowAddJobDialog()
     {
         RequestAddJob?.Invoke(newJob =>
@@ -175,7 +230,7 @@ public class MainViewModel : ViewModelBase
         });
     }
 
-    // Ouvre la fen├¬tre des param├¿tres via un callback
+    // Opens the settings dialog via a callback
     private void ShowSettingsDialog()
     {
         AppSettings current = GetSettings();
@@ -208,13 +263,13 @@ public class MainViewModel : ViewModelBase
     }
 
 
-    public string GetText(string key) => _languageManager.GetText(key);
+    public static string GetText(string key) => LanguageManager.Instance.GetText(key);
 
     public bool ChangeLanguage(string lang)
     {
         try
         {
-            _languageManager.SetLanguage(lang);
+            LanguageManager.Instance.SetLanguage(lang);
             _settings.Language = lang;
             SaveSettings();
             return true;
@@ -281,49 +336,63 @@ public class MainViewModel : ViewModelBase
 
         List<int> indicesToRun = ParseIndices(input, _jobs.Count);
 
-        // One shared context for the whole batch: enforces cross-job large-file limit.
-        var context = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
-
-        var results = new bool[indicesToRun.Count];
-        var threads = new List<Thread>();
-
-        for (int i = 0; i < indicesToRun.Count; i++)
+        using var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+        bool allSucceeded = true;
+        foreach (int index in indicesToRun)
         {
-            int capturedI = i;
-            int capturedIndex = indicesToRun[i];
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    results[capturedI] = _backupProcessor.Execute(_jobs[capturedIndex], context);
-                }
-                catch (Exception)
-                {
-                    results[capturedI] = false;
-                }
-            });
-            threads.Add(thread);
+            using var pauseGate = new ManualResetEventSlim(true);
+            bool succeeded = _backupProcessor.Execute(_jobs[index], syncContext, pauseGate, CancellationToken.None);
+            allSucceeded &= succeeded;
+
+            if (!succeeded)
+                break;
         }
 
-        foreach (var t in threads) t.Start();
-        foreach (var t in threads) t.Join();
-
-        bool allSucceeded = true;
-        foreach (bool r in results) allSucceeded &= r;
         return allSucceeded;
     }
 
     public bool RunAllJobs()
     {
         if (_jobs.Count == 0) return false;
-        return RunJob($"1-{_jobs.Count}");
+
+        using var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+        bool allSucceeded = true;
+        var threads = new List<Thread>();
+        var results = new bool[_jobs.Count];
+        var pauseGates = new ManualResetEventSlim[_jobs.Count];
+
+        for (int i = 0; i < _jobs.Count; i++)
+        {
+            pauseGates[i] = new ManualResetEventSlim(true);
+            int captured = i;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    results[captured] = _backupProcessor.Execute(
+                        _jobs[captured], syncContext, pauseGates[captured], CancellationToken.None);
+                }
+                finally
+                {
+                    pauseGates[captured].Dispose();
+                }
+            });
+            thread.IsBackground = true;
+            threads.Add(thread);
+        }
+
+        foreach (var t in threads) t.Start();
+        foreach (var t in threads) t.Join();
+
+        foreach (bool r in results) allSucceeded &= r;
+        return allSucceeded;
     }
 
-    public bool RunJobByIndex(int index)
+    public bool RunJobByIndex(int index, BackupSyncContext? syncContext = null, ManualResetEventSlim? userPauseGate = null, CancellationToken cancellationToken = default)
     {
         if (index < 0 || index >= _jobs.Count) return false;
-        var context = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
-        return _backupProcessor.Execute(_jobs[index], context);
+        syncContext ??= new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+        return _backupProcessor.Execute(_jobs[index], syncContext, userPauseGate ?? new ManualResetEventSlim(true), cancellationToken);
     }
 
     public List<BackupJob> GetJobs() => _jobs;
@@ -343,10 +412,13 @@ public class MainViewModel : ViewModelBase
         _settings.BusinessSoftwareProcesses = updated.BusinessSoftwareProcesses;
         _settings.EncryptedExtensions = updated.EncryptedExtensions;
         _settings.PrioritizedExtensions = updated.PrioritizedExtensions;
+        _settings.LargeFileSizeThresholdKb = updated.LargeFileSizeThresholdKb;
         _settings.EncryptionKey = updated.EncryptionKey;
-        _languageManager.SetLanguage(updated.Language);
+        LanguageManager.Instance.SetLanguage(updated.Language);
         _settings.Language = updated.Language;
         SaveSettings();
+        _businessSoftwareMonitor.StopMonitoring();
+        _businessSoftwareMonitor.StartMonitoring(_settings.BusinessSoftwareProcesses);
     }
 
     public void UpdateEncryptedExtensions(IEnumerable<string> extensions)
@@ -379,7 +451,7 @@ public class MainViewModel : ViewModelBase
         return result;
     }
 
-    // Transforme une saisie utilisateur ("1-3" ou "1;4;5") en liste d'indices 0-based
+    // Converts user input ("1-3" or "1;4;5") into a 0-based index list
     private static List<int> ParseIndices(string input, int maxCount)
     {
         var indices = new List<int>();
