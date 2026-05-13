@@ -34,8 +34,7 @@
   "prompt_business_processes": "Noms des processus métier (séparés par ;) : ",
   "settings_saved": "Paramètres enregistrés.",
   "error_finding_files": "Une erreur s'est produite lors de la recherche des fichiers : ",
-  "differential_update": "Mise à jour différentielle"
-,
+  "differential_update": "Mise à jour différentielle",
   "gui_title": "EasySave",
   "gui_add_job": "Ajouter",
   "gui_run_all": "Tout exécuter",
@@ -65,6 +64,8 @@
   "gui_state_format": "Format de l'état",
   "gui_business_processes": "Logiciels métier (un par ligne)",
   "gui_encrypted_extensions": "Extensions chiffrées (une par ligne, ex. .txt)",
+  "gui_prioritized_extensions": "Extensions à prioriser lors des backups (une par ligne, ex. .txt)",
+  "gui_large_file_threshold": "Seuil gros fichiers (Ko, 0 = désactivé)",
   "gui_encryption_key": "Clé de chiffrement",
   "gui_save": "Enregistrer",
   "gui_current_file": "Fichier courant :",

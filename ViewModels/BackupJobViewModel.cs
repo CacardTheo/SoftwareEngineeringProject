@@ -6,14 +6,18 @@ using System.Runtime.CompilerServices;
 
 namespace EasySaveWpf.ViewModels;
 
-public class BackupJobViewModel : ViewModelBase
+public class BackupJobViewModel : ViewModelBase, IDisposable
 {
     private BackupStatus _status = BackupStatus.Inactive;
     private int _progression;
     private bool _isRunning;
+    private bool _isPaused;
     private string _currentFile = string.Empty;
     private bool _blockedByBusinessSoftware;
     private string _errorMessage = string.Empty;
+
+    private ManualResetEventSlim _userPauseGate = new ManualResetEventSlim(true);
+    private CancellationTokenSource _cts = new CancellationTokenSource();
 
     public BackupJob Job { get; }
 
@@ -21,6 +25,9 @@ public class BackupJobViewModel : ViewModelBase
     public string TypeLabel => Job.Type.ToString();
     public string SourceDir => Job.SourceDir ?? string.Empty;
     public string TargetDir => Job.TargetDir ?? string.Empty;
+
+    public ManualResetEventSlim UserPauseGate => _userPauseGate;
+    public CancellationToken CancellationToken => _cts.Token;
 
     public BackupStatus Status
     {
@@ -50,8 +57,31 @@ public class BackupJobViewModel : ViewModelBase
             SetField(ref _isRunning, value);
             RunCommand.RaiseCanExecuteChanged();
             DeleteCommand.RaiseCanExecuteChanged();
+            PauseCommand.RaiseCanExecuteChanged();
+            ResumeCommand.RaiseCanExecuteChanged();
+            StopCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(IsNotRunning));
+            OnPropertyChanged(nameof(IsRunningAndPaused));
+            OnPropertyChanged(nameof(IsRunningAndNotPaused));
         }
     }
+
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set
+        {
+            SetField(ref _isPaused, value);
+            PauseCommand.RaiseCanExecuteChanged();
+            ResumeCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(IsRunningAndPaused));
+            OnPropertyChanged(nameof(IsRunningAndNotPaused));
+        }
+    }
+
+    public bool IsNotRunning => !IsRunning;
+    public bool IsRunningAndPaused => IsRunning && IsPaused;
+    public bool IsRunningAndNotPaused => IsRunning && !IsPaused;
 
     public bool HasBeenRun  => Status != BackupStatus.Inactive;
     public bool IsInProgress => Status == BackupStatus.In_Progress;
@@ -87,6 +117,7 @@ public class BackupJobViewModel : ViewModelBase
     }
 
     public bool HasError => Status == BackupStatus.Error && !string.IsNullOrEmpty(_errorMessage);
+
     public string StatusText
     {
         get
@@ -129,6 +160,9 @@ public class BackupJobViewModel : ViewModelBase
 
     public Command RunCommand { get; }
     public Command DeleteCommand { get; }
+    public Command PauseCommand { get; }
+    public Command ResumeCommand { get; }
+    public Command StopCommand { get; }
 
     public BackupJobViewModel(BackupJob job, Action<BackupJobViewModel> onRun, Action<BackupJobViewModel> onDelete)
     {
@@ -141,8 +175,34 @@ public class BackupJobViewModel : ViewModelBase
         DeleteCommand = new Command(
             () => onDelete(this),
             () => !IsRunning);
-            
+
+        PauseCommand = new Command(
+            () => { _userPauseGate.Reset(); IsPaused = true; },
+            () => IsRunning && !IsPaused);
+
+        ResumeCommand = new Command(
+            () => { _userPauseGate.Set(); IsPaused = false; },
+            () => IsRunning && IsPaused);
+
+        StopCommand = new Command(
+            () => _cts.Cancel(),
+            () => IsRunning);
+
         LanguageManager.Instance.PropertyChanged += (s, e) => OnPropertyChanged(nameof(StatusText));
+    }
+
+    public void ResetForNewRun()
+    {
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+        _userPauseGate.Set();
+        IsPaused = false;
+    }
+
+    public void Dispose()
+    {
+        _cts.Dispose();
+        _userPauseGate.Dispose();
     }
 
     public void ApplyProgress(string jobName, BackupStatus status, int progression, string currentFile, bool blocked, string errorMessage = "")

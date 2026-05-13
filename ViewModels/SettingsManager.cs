@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using EasySaveWpf.Utils;
 
 namespace EasySaveWpf.ViewModels;
 
@@ -9,13 +10,7 @@ public class SettingsManager
 
     public SettingsManager()
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string folderPath = Path.Combine(appData, "EasySave");
-
-        if (!Directory.Exists(folderPath))
-            Directory.CreateDirectory(folderPath);
-
-        _settingsFilePath = Path.Combine(folderPath, "settings.json");
+        _settingsFilePath = Path.Combine(FileHelper.GetAppDataFolder(), "settings.json");
     }
 
     private static JsonSerializerOptions SerializerOptions { get; } = new JsonSerializerOptions

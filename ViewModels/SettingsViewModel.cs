@@ -11,6 +11,8 @@ public class SettingsViewModel : ViewModelBase
     private LogFormat _stateFormat;
     private string _businessProcesses = string.Empty;
     private string _encryptedExtensions = string.Empty;
+    private string _prioritizedExtensions = string.Empty;
+    private int _largeFileSizeThresholdKb = 0;
     private string _encryptionKey = string.Empty;
     private LogMode _logMode = LogMode.Local;
     private string _dockerLogServerUrl = "127.0.0.1:5132";
@@ -45,6 +47,18 @@ public class SettingsViewModel : ViewModelBase
         set => SetField(ref _encryptedExtensions, value);
     }
 
+    public string PrioritizedExtensions
+    {
+        get => _prioritizedExtensions;
+        set => SetField(ref _prioritizedExtensions, value);
+    }
+
+    public int LargeFileSizeThresholdKb
+    {
+        get => _largeFileSizeThresholdKb;
+        set => SetField(ref _largeFileSizeThresholdKb, value);
+    }
+
     public string EncryptionKey
     {
         get => _encryptionKey;
@@ -53,8 +67,7 @@ public class SettingsViewModel : ViewModelBase
 
     public List<string> AvailableLanguages => LangMgr.GetAvailableLanguages();
 
-    // Affiche le nom de chaque langue dans sa propre langue, ex: "English / Français / Русский"
-    // Reste lisible quelle que soit la langue active
+    // Displays each language name in its own language, e.g. "English / Français / Русский" — readable regardless of the active language
     public string LanguageSelectorLabel
     {
         get
@@ -130,6 +143,8 @@ public class SettingsViewModel : ViewModelBase
         _stateFormat = current.StateFormat;
         _businessProcesses = string.Join(Environment.NewLine, current.BusinessSoftwareProcesses);
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
+        _prioritizedExtensions = string.Join(Environment.NewLine, current.PrioritizedExtensions);
+        _largeFileSizeThresholdKb = current.LargeFileSizeThresholdKb;
         _encryptionKey = current.EncryptionKey;
         _logMode = current.LogMode;
         _dockerLogServerUrl = current.DockerLogServerUrl;
@@ -150,34 +165,22 @@ public class SettingsViewModel : ViewModelBase
             EncryptionKey = EncryptionKey,
             LogMode = LogMode,
             DockerLogServerUrl = DockerLogServerUrl.Trim()
+            PrioritizedExtensions = ParseLines(PrioritizedExtensions),
+            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb,
+            EncryptionKey = EncryptionKey
         };
         Saved?.Invoke(updated);
     }
 
     private static List<string> ParseLines(string multiline)
     {
-        string[] lines = multiline.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var result = new List<string>();
-
-        foreach (string line in lines)
+        foreach (string line in multiline.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = line.Trim();
-            if (trimmed.Length == 0) continue;
-
-            bool alreadyAdded = false;
-            foreach (string existing in result)
-            {
-                if (string.Equals(existing, trimmed, StringComparison.OrdinalIgnoreCase))
-                {
-                    alreadyAdded = true;
-                    break;
-                }
-            }
-
-            if (!alreadyAdded)
+            if (trimmed.Length > 0 && !result.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
                 result.Add(trimmed);
         }
-
         return result;
     }
 }
