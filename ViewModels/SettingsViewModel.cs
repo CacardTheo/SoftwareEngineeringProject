@@ -11,6 +11,8 @@ public class SettingsViewModel : ViewModelBase
     private LogFormat _stateFormat;
     private string _businessProcesses = string.Empty;
     private string _encryptedExtensions = string.Empty;
+    private string _prioritizedExtensions = string.Empty;
+    private int _largeFileSizeThresholdKb = 0;
     private string _encryptionKey = string.Empty;
 
     public string Language
@@ -43,6 +45,18 @@ public class SettingsViewModel : ViewModelBase
         set => SetField(ref _encryptedExtensions, value);
     }
 
+    public string PrioritizedExtensions
+    {
+        get => _prioritizedExtensions;
+        set => SetField(ref _prioritizedExtensions, value);
+    }
+
+    public int LargeFileSizeThresholdKb
+    {
+        get => _largeFileSizeThresholdKb;
+        set => SetField(ref _largeFileSizeThresholdKb, value);
+    }
+
     public string EncryptionKey
     {
         get => _encryptionKey;
@@ -51,8 +65,7 @@ public class SettingsViewModel : ViewModelBase
 
     public List<string> AvailableLanguages => LangMgr.GetAvailableLanguages();
 
-    // Affiche le nom de chaque langue dans sa propre langue, ex: "English / Français / Русский"
-    // Reste lisible quelle que soit la langue active
+    // Displays each language name in its own language, e.g. "English / Français / Русский" — readable regardless of the active language
     public string LanguageSelectorLabel
     {
         get
@@ -95,6 +108,8 @@ public class SettingsViewModel : ViewModelBase
         _stateFormat = current.StateFormat;
         _businessProcesses = string.Join(Environment.NewLine, current.BusinessSoftwareProcesses);
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
+        _prioritizedExtensions = string.Join(Environment.NewLine, current.PrioritizedExtensions);
+        _largeFileSizeThresholdKb = current.LargeFileSizeThresholdKb;
         _encryptionKey = current.EncryptionKey;
 
         SaveCommand = new Command(Save);
@@ -110,6 +125,8 @@ public class SettingsViewModel : ViewModelBase
             StateFormat = StateFormat,
             BusinessSoftwareProcesses = ParseLines(BusinessProcesses),
             EncryptedExtensions = ParseLines(EncryptedExtensions),
+            PrioritizedExtensions = ParseLines(PrioritizedExtensions),
+            LargeFileSizeThresholdKb = LargeFileSizeThresholdKb,
             EncryptionKey = EncryptionKey
         };
         Saved?.Invoke(updated);

@@ -11,4 +11,6 @@ public class AppSettings
     public List<string> BusinessSoftwareProcesses { get; set; } = new();
     public LogFormat LogFormat { get; set; } = LogFormat.Json;
     public LogFormat StateFormat { get; set; } = LogFormat.Json;
+    public List<string> PrioritizedExtensions { get; set; } = new();
+    public int LargeFileSizeThresholdKb { get; set; } = 0;
 }

@@ -68,6 +68,24 @@
                    BorderBrush="#3A3A5E" CornerRadius="4" Padding="8"/>
         </StackPanel>
 
+        <!-- Prioritized extensions -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding LangMgr[gui_prioritized_extensions]}" Foreground="#9399B2" FontSize="12"/>
+          <TextBox Text="{Binding PrioritizedExtensions}"
+                   AcceptsReturn="True" Height="80"
+                   Background="#2A2A3E" Foreground="#CDD6F4"
+                   BorderBrush="#3A3A5E" CornerRadius="4" Padding="8"/>
+        </StackPanel>
+
+        <!-- Large file threshold -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="{Binding LangMgr[gui_large_file_threshold]}" Foreground="#9399B2" FontSize="12"/>
+          <NumericUpDown Value="{Binding LargeFileSizeThresholdKb}"
+                         Minimum="0" Increment="1024"
+                         Background="#2A2A3E" Foreground="#CDD6F4"
+                         BorderBrush="#3A3A5E" CornerRadius="4" Padding="8"/>
+        </StackPanel>
+
         <!-- Encryption key -->
         <StackPanel Spacing="4">
           <TextBlock Text="{Binding LangMgr[gui_encryption_key]}" Foreground="#9399B2" FontSize="12"/>

@@ -1,138 +1,56 @@
-using System.Diagnostics;
 using EasyLog;
-using EasySaveWpf;
 using EasySaveWpf.ViewModels;
 
 namespace EasySaveWpf
 {
-    public class FullBackupStrategy : IBackupStrategy
+    public class FullBackupStrategy : BackupStrategyBase
     {
-        private readonly LanguageManager _languageManager;
+        public FullBackupStrategy(BackupSyncContext context) : base(context) { }
 
-        public FullBackupStrategy()
-        {
-            _languageManager = LanguageManager.GetInstance();
-        }
-
-        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action waitIfPaused, Action<string, string, long>? onBytesWritten = null)
+        public override void Backup(
+            BackupJob job,
+            LogService logService,
+            AppSettings settings,
+            CryptoSoftService cryptoService,
+            Action<string, string, long> onFileCopied,
+            ManualResetEventSlim businessSoftwareGate,
+            ManualResetEventSlim userPauseGate,
+            CancellationToken cancellationToken,
+            Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
 
+            if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
+                throw new DirectoryNotFoundException(_languageManager.GetText("log_error_source_not_found"));
+
+            if (File.Exists(job.SourceDir))
+            {
+                CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService,
+                    onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten);
+                return;
+            }
+
+            DirectoryInfo sourceInfo = new(job.SourceDir);
+            FileInfo[] files;
             try
             {
-                if (!File.Exists(job.SourceDir) && !Directory.Exists(job.SourceDir))
-                    throw new DirectoryNotFoundException(_languageManager.GetText("log_error_source_not_found"));
-
-                // Si la source est un fichier unique, on le copie directement
-                if (File.Exists(job.SourceDir))
-                {
-                    waitIfPaused();
-
-                    CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten);
-                    return;
-                }
-
-                string[] files;
-                try
-                {
-                    files = Directory.GetFiles(job.SourceDir, "*.*", SearchOption.AllDirectories);
-                }
-                catch (Exception ex)
-                {
-                    throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
-                }
-
-                foreach (string filePath in files)
-                {
-                    waitIfPaused();
-
-                    FileInfo fileInfo = new FileInfo(filePath);
-                    string targetPath = filePath.Replace(job.SourceDir, job.TargetDir);
-
-                    Stopwatch sw = Stopwatch.StartNew();
-                    try
-                    {
-                        string? dir = Path.GetDirectoryName(targetPath);
-                        if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-
-                        FileHelper.CopyFile(filePath, targetPath, onBytesWritten);
-                        sw.Stop();
-
-                        long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
-                        onFileCopied(filePath, targetPath, fileInfo.Length);
-
-                        logService.Save(new LogEntry
-                        {
-                            BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath,
-                            TargetFilePath = targetPath,
-                            FileSize = fileInfo.Length,
-                            FileTransferTimeMs = sw.ElapsedMilliseconds,
-                            EncryptionTimeMs = encryptionTime,
-                            Event = "FileCopied"
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        sw.Stop();
-                        Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{fileInfo.Name}: {ex.Message}");
-
-                        logService.Save(new LogEntry
-                        {
-                            BackupName = job.Name ?? string.Empty,
-                            SourceFilePath = filePath,
-                            TargetFilePath = "ERROR",
-                            FileSize = fileInfo.Length,
-                            FileTransferTimeMs = -1,
-                            EncryptionTimeMs = 0,
-                            Event = "CopyError"
-                        });
-                    }
-                }
+                files = sourceInfo.GetFiles("*.*", SearchOption.AllDirectories);
             }
-          
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                throw new UnauthorizedAccessException(_languageManager.GetText("log_error_access_denied") + ex.Message, ex);
+                throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
             }
-        }
 
-        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action<string, string, long>? onBytesWritten = null)
-        {
-            FileInfo fileInfo = new FileInfo(sourcePath);
-            if (!Directory.Exists(targetDir))
-                Directory.CreateDirectory(targetDir);
+            var prioritized = files.Where(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLowerInvariant())).ToList();
+            var regular = files.Except(prioritized).ToList();
 
-            string targetPath = Path.Combine(targetDir, fileInfo.Name);
+            _context.RegisterPriorityFiles(prioritized.Count);
 
-            Stopwatch sw = Stopwatch.StartNew();
-            FileHelper.CopyFile(sourcePath, targetPath, onBytesWritten);
-            sw.Stop();
-
-            long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
-            onFileCopied(sourcePath, targetPath, fileInfo.Length);
-
-            logService.Save(new LogEntry
-            {
-                BackupName = job.Name ?? string.Empty,
-                SourceFilePath = sourcePath,
-                TargetFilePath = targetPath,
-                FileSize = fileInfo.Length,
-                FileTransferTimeMs = sw.ElapsedMilliseconds,
-                EncryptionTimeMs = encryptionTime,
-                Event = "FileCopied"
-            });
-        }
-
-        private static long TryEncrypt(string targetPath, string extension, CryptoSoftService cryptoService, AppSettings settings)
-        {
-            foreach (string ext in settings.EncryptedExtensions)
-            {
-                if (ext.Equals(extension, StringComparison.OrdinalIgnoreCase))
-                    return cryptoService.Encrypt(targetPath, settings.EncryptionKey);
-            }
-            return 0;
+            CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService,
+                onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: (f, t) => true);
+            CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService,
+                onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: (f, t) => true);
         }
     }
 }
