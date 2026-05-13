@@ -13,5 +13,5 @@ public class AppSettings
     public LogFormat StateFormat { get; set; } = LogFormat.Json;
 
     public LogMode LogMode { get; set; } = LogMode.Local;
-    public string DockerLogServerUrl { get; set; } = "http://localhost:5132/api/logs"; 
+    public string DockerLogServerUrl { get; set; } = "127.0.0.1:5132";
 }

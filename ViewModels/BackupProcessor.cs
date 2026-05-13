@@ -1,4 +1,5 @@
 using EasySaveWpf;
+using EasySaveWpf.Services;
 using EasyLog;
 
 namespace EasySaveWpf.ViewModels;
@@ -29,15 +30,11 @@ public class BackupProcessor
         AppSettings settings = _settings;
         _stateManager.SetFormat(settings.StateFormat);
         
-        var logService = new LogService(
-            settings.LogFormat,
-            settings.LogMode,
-            settings.DockerLogServerUrl
-        );
+        var logRouter = new BackupLogRouter(settings);
 
         if (IsBusinessSoftwareRunning(settings, out string detectedBeforeStart))
         {
-            LogBusinessSoftwareBlock(job, detectedBeforeStart, logService, "BlockedBeforeStart");
+            LogBusinessSoftwareBlock(job, detectedBeforeStart, logRouter, "BlockedBeforeStart");
             RaiseProgress(job.Name, BackupStatus.Inactive, 0, blocked: true);
             return false;
         }
@@ -99,7 +96,7 @@ public class BackupProcessor
             int filesCopied = 0;
             int lastReportedProgression = -1;
 
-            strategy.Backup(job, logService, settings, _cryptoSoftService, OnFileCopied, CanContinue, OnBytesWritten);
+            strategy.Backup(job, logRouter, settings, _cryptoSoftService, OnFileCopied, CanContinue, OnBytesWritten);
 
             void OnBytesWritten(string sourceFile, string destFile, long bytes)
             {
@@ -170,7 +167,7 @@ public class BackupProcessor
             if (ex.Message == "BUSINESS_SOFTWARE_DETECTED")
             {
                 IsBusinessSoftwareRunning(settings, out string detectedProcess);
-                LogBusinessSoftwareBlock(job, detectedProcess, logService, "StoppedDuringExecution");
+                LogBusinessSoftwareBlock(job, detectedProcess, logRouter, "StoppedDuringExecution");
                 RaiseProgress(job.Name, BackupStatus.Inactive, -1, blocked: true);
 
                 _stateManager.UpdateJobState(new StateEntry
@@ -203,7 +200,7 @@ public class BackupProcessor
                 LastRun = DateTime.Now
             });
 
-            logService.Save(new LogEntry
+            logRouter.Save(new LogEntry
             {
                 BackupName = job.Name ?? string.Empty,
                 SourceFilePath = job.SourceDir ?? string.Empty,
@@ -228,9 +225,9 @@ public class BackupProcessor
     private bool IsBusinessSoftwareRunning(AppSettings settings, out string detectedProcess) =>
         _businessSoftwareMonitor.TryFindRunningBusinessSoftware(settings.BusinessSoftwareProcesses, out detectedProcess);
 
-    private void LogBusinessSoftwareBlock(BackupJob job, string processName, LogService logService, string eventName)
+    private void LogBusinessSoftwareBlock(BackupJob job, string processName, BackupLogRouter logRouter, string eventName)
     {
-        logService.Save(new LogEntry
+        logRouter.Save(new LogEntry
         {
             BackupName = job.Name ?? string.Empty,
             SourceFilePath = job.SourceDir ?? string.Empty,

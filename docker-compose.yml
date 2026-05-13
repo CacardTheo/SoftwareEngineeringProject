@@ -1,0 +1,12 @@
+services:
+  easysave-log-server:
+    build:
+      context: ./EasySaveLogServer
+      dockerfile: Dockerfile
+    ports:
+      - "5132:5132"
+    volumes:
+      - easysave_central_logs:/app/Logs
+
+volumes:
+  easysave_central_logs:

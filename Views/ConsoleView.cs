@@ -1,3 +1,4 @@
+using EasyLog;
 using EasySaveWpf.ViewModels;
 using EasySaveWpf;
 
@@ -119,6 +120,20 @@ public class ConsoleView
         settings.StateFormat = stateFormat.Equals("xml", StringComparison.OrdinalIgnoreCase)
             ? EasyLog.LogFormat.Xml
             : EasyLog.LogFormat.Json;
+
+        Console.Write(_viewModel.GetText("prompt_log_mode"));
+        string modeLine = (Console.ReadLine() ?? "2").Trim();
+        settings.LogMode = modeLine switch
+        {
+            "1" => LogMode.Centralized,
+            "3" => LogMode.Both,
+            _ => LogMode.Local
+        };
+
+        Console.Write(_viewModel.GetText("prompt_log_socket"));
+        string socketLine = (Console.ReadLine() ?? string.Empty).Trim();
+        if (socketLine.Length > 0)
+            settings.DockerLogServerUrl = socketLine;
 
         Console.Write(_viewModel.GetText("prompt_business_processes"));
         string processInput = Console.ReadLine() ?? string.Empty;

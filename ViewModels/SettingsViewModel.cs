@@ -12,6 +12,8 @@ public class SettingsViewModel : ViewModelBase
     private string _businessProcesses = string.Empty;
     private string _encryptedExtensions = string.Empty;
     private string _encryptionKey = string.Empty;
+    private LogMode _logMode = LogMode.Local;
+    private string _dockerLogServerUrl = "127.0.0.1:5132";
 
     public string Language
     {
@@ -80,7 +82,33 @@ public class SettingsViewModel : ViewModelBase
         LogFormat.Xml
     ];
 
+    public LogMode LogMode
+    {
+        get => _logMode;
+        set
+        {
+            if (SetField(ref _logMode, value))
+                OnPropertyChanged(nameof(SelectedLogModeOption));
+        }
+    }
 
+    public string DockerLogServerUrl
+    {
+        get => _dockerLogServerUrl;
+        set => SetField(ref _dockerLogServerUrl, value);
+    }
+
+    public List<LogModeDisplayOption> LogModeOptions { get; }
+
+    public LogModeDisplayOption SelectedLogModeOption
+    {
+        get => LogModeOptions.First(o => o.Mode == LogMode);
+        set
+        {
+            if (value != null && value.Mode != LogMode)
+                LogMode = value.Mode;
+        }
+    }
 
     public event Action<AppSettings>? Saved;
     public event Action? Cancelled;
@@ -90,12 +118,21 @@ public class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel(AppSettings current)
     {
+        LogModeOptions = new List<LogModeDisplayOption>
+        {
+            new(LogMode.Centralized, LangMgr.GetText("gui_log_mode_centralized")),
+            new(LogMode.Local, LangMgr.GetText("gui_log_mode_local")),
+            new(LogMode.Both, LangMgr.GetText("gui_log_mode_both")),
+        };
+
         _language = current.Language;
         _logFormat = current.LogFormat;
         _stateFormat = current.StateFormat;
         _businessProcesses = string.Join(Environment.NewLine, current.BusinessSoftwareProcesses);
         _encryptedExtensions = string.Join(Environment.NewLine, current.EncryptedExtensions);
         _encryptionKey = current.EncryptionKey;
+        _logMode = current.LogMode;
+        _dockerLogServerUrl = current.DockerLogServerUrl;
 
         SaveCommand = new Command(Save);
         CancelCommand = new Command(() => Cancelled?.Invoke());
@@ -110,7 +147,9 @@ public class SettingsViewModel : ViewModelBase
             StateFormat = StateFormat,
             BusinessSoftwareProcesses = ParseLines(BusinessProcesses),
             EncryptedExtensions = ParseLines(EncryptedExtensions),
-            EncryptionKey = EncryptionKey
+            EncryptionKey = EncryptionKey,
+            LogMode = LogMode,
+            DockerLogServerUrl = DockerLogServerUrl.Trim()
         };
         Saved?.Invoke(updated);
     }

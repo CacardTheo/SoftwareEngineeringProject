@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using EasyLog;
 using EasySaveWpf;
+using EasySaveWpf.Services;
 using EasySaveWpf.ViewModels;
 
 namespace EasySaveWpf
@@ -14,7 +15,7 @@ namespace EasySaveWpf
             _languageManager = LanguageManager.GetInstance();
         }
 
-        public void Backup(BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
+        public void Backup(BackupJob job, BackupLogRouter logRouter, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Func<bool> canCopyNextFile, Action<string, string, long>? onBytesWritten = null)
         {
             if (string.IsNullOrEmpty(job.SourceDir) || string.IsNullOrEmpty(job.TargetDir))
                 throw new ArgumentException(_languageManager.GetText("log_error_missing_paths"));
@@ -30,7 +31,7 @@ namespace EasySaveWpf
                     if (!canCopyNextFile())
                         throw new InvalidOperationException("BUSINESS_SOFTWARE_DETECTED");
 
-                    CopySingleFile(job.SourceDir, job.TargetDir, job, logService, settings, cryptoService, onFileCopied, onBytesWritten);
+                    CopySingleFile(job.SourceDir, job.TargetDir, job, logRouter, settings, cryptoService, onFileCopied, onBytesWritten);
                     return;
                 }
 
@@ -64,7 +65,7 @@ namespace EasySaveWpf
                         long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
                         onFileCopied(filePath, targetPath, fileInfo.Length);
 
-                        logService.Save(new LogEntry
+                        logRouter.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -84,7 +85,7 @@ namespace EasySaveWpf
                         sw.Stop();
                         Console.WriteLine($"{_languageManager.GetText("log_error_copy_failed")}{fileInfo.Name}: {ex.Message}");
 
-                        logService.Save(new LogEntry
+                        logRouter.Save(new LogEntry
                         {
                             BackupName = job.Name ?? string.Empty,
                             SourceFilePath = filePath,
@@ -107,7 +108,7 @@ namespace EasySaveWpf
             }
         }
 
-        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, LogService logService, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action<string, string, long>? onBytesWritten = null)
+        private static void CopySingleFile(string sourcePath, string targetDir, BackupJob job, BackupLogRouter logRouter, AppSettings settings, CryptoSoftService cryptoService, Action<string, string, long> onFileCopied, Action<string, string, long>? onBytesWritten = null)
         {
             FileInfo fileInfo = new FileInfo(sourcePath);
             if (!Directory.Exists(targetDir))
@@ -122,7 +123,7 @@ namespace EasySaveWpf
             long encryptionTime = TryEncrypt(targetPath, fileInfo.Extension, cryptoService, settings);
             onFileCopied(sourcePath, targetPath, fileInfo.Length);
 
-            logService.Save(new LogEntry
+            logRouter.Save(new LogEntry
             {
                 BackupName = job.Name ?? string.Empty,
                 SourceFilePath = sourcePath,

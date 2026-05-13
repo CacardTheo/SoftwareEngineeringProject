@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace EasySaveWpf.ViewModels;
 
@@ -17,6 +18,12 @@ public class SettingsManager
         _settingsFilePath = Path.Combine(folderPath, "settings.json");
     }
 
+    private static JsonSerializerOptions SerializerOptions { get; } = new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     public AppSettings Load()
     {
         try
@@ -25,7 +32,7 @@ public class SettingsManager
                 return new AppSettings();
 
             string json = File.ReadAllText(_settingsFilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            return JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions) ?? new AppSettings();
         }
         catch
         {
@@ -35,8 +42,7 @@ public class SettingsManager
 
     public void Save(AppSettings settings)
     {
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        string json = JsonSerializer.Serialize(settings, options);
+        string json = JsonSerializer.Serialize(settings, SerializerOptions);
         File.WriteAllText(_settingsFilePath, json);
     }
 }

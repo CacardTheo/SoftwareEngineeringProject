@@ -323,6 +323,8 @@ public class MainViewModel : ViewModelBase
         _settings.BusinessSoftwareProcesses = updated.BusinessSoftwareProcesses;
         _settings.EncryptedExtensions = updated.EncryptedExtensions;
         _settings.EncryptionKey = updated.EncryptionKey;
+        _settings.LogMode = updated.LogMode;
+        _settings.DockerLogServerUrl = updated.DockerLogServerUrl;
         _languageManager.SetLanguage(updated.Language);
         _settings.Language = updated.Language;
         SaveSettings();
