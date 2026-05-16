@@ -50,12 +50,16 @@ namespace EasySaveWpf
             Func<FileInfo, string, bool> shouldCopy)
         {
             var threads = new List<Thread>();
+            var threadLimiter = new SemaphoreSlim(Environment.ProcessorCount);
 
             foreach (FileInfo filePath in group)
             {
                 // Pause at file boundary: wait for both gates before starting each file.
                 cancellationToken.ThrowIfCancellationRequested();
                 WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
+
+                //wait for an available thread slot before creating a new OS thread
+                threadLimiter.Wait(cancellationToken);
 
                 FileInfo captured = filePath;
                 var thread = new Thread(() =>
@@ -146,6 +150,7 @@ namespace EasySaveWpf
                     finally
                     {
                         if (isPriorityGroup) _context.NotifyPriorityFileDone();
+                        threadLimiter.Release(); // Free up the slot for the next file
                     }
                 });
 
