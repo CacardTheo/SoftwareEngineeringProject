@@ -264,8 +264,6 @@ public class MainViewModel : ViewModelBase
     }
 
 
-    public static string GetText(string key) => LanguageManager.Instance.GetText(key);
-
     public bool ChangeLanguage(string lang)
     {
         try
@@ -279,32 +277,6 @@ public class MainViewModel : ViewModelBase
         {
             return false;
         }
-    }
-
-    public bool CreateJob(string name, string source, string target, string type)
-    {
-        foreach (BackupJob job in _jobs)
-        {
-            if (job.Name == name)
-                return false;
-        }
-
-        BackupType backupType = BackupType.Differential;
-        if (type.Equals("Full", StringComparison.OrdinalIgnoreCase))
-        {
-            backupType = BackupType.Full;
-        }
-
-        _jobs.Add(new BackupJob
-        {
-            Name = name,
-            SourceDir = source,
-            TargetDir = target,
-            Type = backupType
-        });
-
-        _configManager.SaveJobs(_jobs);
-        return true;
     }
 
     public bool AddJob(BackupJob job)
@@ -352,51 +324,12 @@ public class MainViewModel : ViewModelBase
         return allSucceeded;
     }
 
-    public bool RunAllJobs()
-    {
-        if (_jobs.Count == 0) return false;
-
-        using var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
-        bool allSucceeded = true;
-        var threads = new List<Thread>();
-        var results = new bool[_jobs.Count];
-        var pauseGates = new ManualResetEventSlim[_jobs.Count];
-
-        for (int i = 0; i < _jobs.Count; i++)
-        {
-            pauseGates[i] = new ManualResetEventSlim(true);
-            int captured = i;
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    results[captured] = _backupProcessor.Execute(
-                        _jobs[captured], syncContext, pauseGates[captured], CancellationToken.None);
-                }
-                finally
-                {
-                    pauseGates[captured].Dispose();
-                }
-            });
-            thread.IsBackground = true;
-            threads.Add(thread);
-        }
-
-        foreach (var t in threads) t.Start();
-        foreach (var t in threads) t.Join();
-
-        foreach (bool r in results) allSucceeded &= r;
-        return allSucceeded;
-    }
-
     public bool RunJobByIndex(int index, BackupSyncContext? syncContext = null, ManualResetEventSlim? userPauseGate = null, CancellationToken cancellationToken = default)
     {
         if (index < 0 || index >= _jobs.Count) return false;
         syncContext ??= new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
         return _backupProcessor.Execute(_jobs[index], syncContext, userPauseGate ?? new ManualResetEventSlim(true), cancellationToken);
     }
-
-    public List<BackupJob> GetJobs() => _jobs;
 
     public AppSettings GetSettings() => _settings;
 
