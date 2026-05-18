@@ -3,11 +3,12 @@ using EasyLog;
 namespace EasySaveWpf.Services;
 
 /// <summary>
-/// Routes log entries according to <see cref="AppSettings.LogMode"/>:
-/// Local = daily file only (EasyLog), Centralized = central server only (TCP), Both = both.
+/// Routes log entries according to AppSettings.LogMode.
 /// </summary>
 public sealed class BackupLogRouter
 {
+    private static readonly Lock _globalWriteLock = new();
+
     private readonly AppSettings _settings;
     private LogService? _localLogService;
 
@@ -20,8 +21,11 @@ public sealed class BackupLogRouter
 
         if (local)
         {
-            _localLogService ??= new LogService(_settings.LogFormat, LogMode.Local, string.Empty);
-            _localLogService.Save(entry);
+            lock (_globalWriteLock)
+            {
+                _localLogService ??= new LogService(_settings.LogFormat, LogMode.Local, string.Empty);
+                _localLogService.Save(entry);
+            }
         }
 
         if (central)

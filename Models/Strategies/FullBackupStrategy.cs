@@ -49,9 +49,6 @@ namespace EasySaveWpf
             var prioritized = files.Where(f => settings.PrioritizedExtensions.Any(ext =>
                 ext.TrimStart('.').Equals(f.Extension.TrimStart('.'), StringComparison.OrdinalIgnoreCase))).ToList();
             var regular = files.Except(prioritized).ToList();
-
-            _context.RegisterPriorityFiles(prioritized.Count);
-
             CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService,
                 onFileCopied, businessSoftwareGate, userPauseGate, cancellationToken, onBytesWritten, shouldCopy: (f, t) => true);
             CopyGroup(regular,     isPriorityGroup: false, job, logService, settings, cryptoService,

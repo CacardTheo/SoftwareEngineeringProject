@@ -1,9 +1,7 @@
 namespace EasySaveWpf
 {
-    // Shared synchronization context across all parallel backup jobs in a single run.
-    // Enforces two constraints:
-    //   1. No non-priority file may be copied while any priority file is still pending (across all jobs).
-    //   2. At most one large file (> threshold) may be transferred at a time (across all jobs).
+    // Context to synchronize parallel backup jobs.
+    // Handles priority files constraints and large files limits.
     public class BackupSyncContext : IDisposable
     {
         private int _priorityFilesRemaining = 0;

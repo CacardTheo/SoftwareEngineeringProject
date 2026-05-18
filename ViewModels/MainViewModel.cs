@@ -126,6 +126,10 @@ public class MainViewModel : ViewModelBase
 
         int index = _jobs.IndexOf(card.Job);
         var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+
+        int priorityCount = BackupStrategyBase.CountPriorityFiles(card.Job, _settings);
+        syncContext.RegisterPriorityFiles(priorityCount);
+
         var userPauseGate = card.UserPauseGate;
         var cancellationToken = card.CancellationToken;
 
@@ -178,43 +182,59 @@ public class MainViewModel : ViewModelBase
         {
             var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
             var jobThreads = new List<Thread>();
-
-            foreach (BackupJobViewModel card in cards)
+            try
             {
-                int index = _jobs.IndexOf(card.Job);
-                var userPauseGate = card.UserPauseGate;
-                var cancellationToken = card.CancellationToken;
-                BackupJobViewModel captured = card;
+                int totalPriorityFiles = cards.Sum(c => BackupStrategyBase.CountPriorityFiles(c.Job, _settings));
+                syncContext.RegisterPriorityFiles(totalPriorityFiles);
 
-                Thread jobThread = new Thread(() =>
+                foreach (BackupJobViewModel card in cards)
                 {
-                    try
+                    int index = _jobs.IndexOf(card.Job);
+                    var userPauseGate = card.UserPauseGate;
+                    var cancellationToken = card.CancellationToken;
+                    BackupJobViewModel captured = card;
+
+                    Thread jobThread = new Thread(() =>
                     {
-                        RunJobByIndex(index, syncContext, userPauseGate, cancellationToken);
-                    }
-                    catch (Exception) { }
-                    finally
-                    {
-                        Dispatcher.UIThread.InvokeAsync(() =>
+                        try
                         {
-                            captured.IsRunning = false;
-                            captured.IsPaused = false;
-                        });
-                    }
-                });
-                jobThread.IsBackground = true;
-                jobThreads.Add(jobThread);
+                            RunJobByIndex(index, syncContext, userPauseGate, cancellationToken);
+                        }
+                        catch (Exception) { }
+                        finally
+                        {
+                            try
+                            {
+                                Dispatcher.UIThread.InvokeAsync(() =>
+                                {
+                                    captured.IsRunning = false;
+                                    captured.IsPaused = false;
+                                });
+                            }
+                            catch { }
+                        }
+                    });
+                    jobThread.IsBackground = true;
+                    jobThreads.Add(jobThread);
+                }
+
+                foreach (var t in jobThreads) t.Start();
             }
-
-            foreach (var t in jobThreads) t.Start();
-            foreach (var t in jobThreads) t.Join();
-            syncContext.Dispose();
-
-            Dispatcher.UIThread.InvokeAsync(() =>
+            finally
             {
-                _isRunningAll = false;
-                RunAllCommand.RaiseCanExecuteChanged();
-            });
+                foreach (var t in jobThreads) t.Join();
+                syncContext.Dispose();
+
+                try
+                {
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        _isRunningAll = false;
+                        RunAllCommand.RaiseCanExecuteChanged();
+                    });
+                }
+                catch { }
+            }
         });
         coordinator.IsBackground = true;
         coordinator.Start();
@@ -310,6 +330,11 @@ public class MainViewModel : ViewModelBase
         List<int> indicesToRun = ParseIndices(input, _jobs.Count);
 
         using var syncContext = new BackupSyncContext(_settings.LargeFileSizeThresholdKb);
+
+        // Pre-register the combined priority count before any job executes.
+        int totalPriority = indicesToRun.Sum(i => BackupStrategyBase.CountPriorityFiles(_jobs[i], _settings));
+        syncContext.RegisterPriorityFiles(totalPriority);
+
         bool allSucceeded = true;
         foreach (int index in indicesToRun)
         {

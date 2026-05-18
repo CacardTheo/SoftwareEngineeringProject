@@ -52,8 +52,6 @@ namespace EasySaveWpf
                 ext.TrimStart('.').Equals(f.Extension.TrimStart('.'), StringComparison.OrdinalIgnoreCase))).ToList();
             var regular = files.Except(prioritized).ToList();
 
-            _context.RegisterPriorityFiles(prioritized.Count);
-
             static bool ShouldCopy(FileInfo f, string t) =>
                 !File.Exists(t) || f.LastWriteTime > File.GetLastWriteTime(t);
             CopyGroup(prioritized, isPriorityGroup: true,  job, logService, settings, cryptoService,

@@ -29,9 +29,30 @@ namespace EasySaveWpf
             CancellationToken cancellationToken,
             Action<string, string, long>? onBytesWritten = null);
 
+        public static int CountPriorityFiles(BackupJob job, AppSettings settings)
+        {
+            if (string.IsNullOrEmpty(job.SourceDir)) return 0;
+            if (File.Exists(job.SourceDir))
+            {
+                string ext = Path.GetExtension(job.SourceDir);
+                return settings.PrioritizedExtensions.Any(p =>
+                    p.TrimStart('.').Equals(ext.TrimStart('.'), StringComparison.OrdinalIgnoreCase)) ? 1 : 0;
+            }
+            if (!Directory.Exists(job.SourceDir)) return 0;
+            try
+            {
+                return new DirectoryInfo(job.SourceDir)
+                    .GetFiles("*.*", SearchOption.AllDirectories)
+                    .Count(f => settings.PrioritizedExtensions.Any(p =>
+                        p.TrimStart('.').Equals(f.Extension.TrimStart('.'), StringComparison.OrdinalIgnoreCase)));
+            }
+            catch { return 0; }
+        }
+
         // Copies all files in the group in parallel.
         // - Priority threads notify the cross-job barrier when done.
-        // - Non-priority threads wait for ALL jobs' priority files before starting.
+        // - Non-priority threads wait for ALL jobs' priority files before starting
+        //   (the barrier must already be armed via RegisterPriorityFiles before threads start).
         // - Pause (user or business software) is checked before starting each file thread.
         // - Stop (cancellation) is checked per 80 KB chunk inside each thread.
         // - Partial files are deleted on cancellation.
@@ -52,116 +73,119 @@ namespace EasySaveWpf
             var threads = new List<Thread>();
             var threadLimiter = new SemaphoreSlim(Environment.ProcessorCount);
 
-            foreach (FileInfo filePath in group)
+            try
             {
-                // Pause at file boundary: wait for both gates before starting each file.
-                cancellationToken.ThrowIfCancellationRequested();
-                WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
-
-                //wait for an available thread slot before creating a new OS thread
-                threadLimiter.Wait(cancellationToken);
-
-                FileInfo captured = filePath;
-                var thread = new Thread(() =>
+                foreach (FileInfo filePath in group)
                 {
-                    string? currentTargetFile = null;
-                    bool isLargeFile = false;
-                    try
+                    cancellationToken.ThrowIfCancellationRequested();
+                    WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
+
+                    threadLimiter.Wait(cancellationToken);
+
+                    FileInfo captured = filePath;
+                    var thread = new Thread(() =>
                     {
-                        if (cancellationToken.IsCancellationRequested) return;
-
-                        if (!isPriorityGroup)
-                        {
-                            // Block until every priority file across ALL jobs is done.
-                            _context.WaitForAllPriorityFiles(cancellationToken);
-                            if (cancellationToken.IsCancellationRequested) return;
-                        }
-
-                        string targetPath = captured.FullName.Replace(job.SourceDir!, job.TargetDir!);
-
-                        if (!shouldCopy(captured, targetPath)) return;
-
-                        string? dir = Path.GetDirectoryName(targetPath);
-                        if (dir != null) Directory.CreateDirectory(dir);
-
-                        Stopwatch sw = Stopwatch.StartNew();
-
-                        isLargeFile = _context.LargeFileSizeThresholdBytes > 0
-                                      && captured.Length > _context.LargeFileSizeThresholdBytes;
-                        if (isLargeFile) _context.AcquireLargeFileSlot();
+                        string? currentTargetFile = null;
+                        bool isLargeFile = false;
                         try
                         {
-                            // Wrap callback: check stop and pause per chunk.
-                            void OnChunk(string src, string dest, long bytes)
+                            if (cancellationToken.IsCancellationRequested) return;
+
+                            if (!isPriorityGroup)
                             {
-                                currentTargetFile = dest;
-                                cancellationToken.ThrowIfCancellationRequested();
-                                WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
-                                onBytesWritten?.Invoke(src, dest, bytes);
+                                _context.WaitForAllPriorityFiles(cancellationToken);
+                                if (cancellationToken.IsCancellationRequested) return;
                             }
-                            FileHelper.CopyFile(captured.FullName, targetPath, OnChunk);
-                            sw.Stop();
+
+                            string targetPath = captured.FullName.Replace(job.SourceDir!, job.TargetDir!);
+
+                            if (!shouldCopy(captured, targetPath)) return;
+
+                            string? dir = Path.GetDirectoryName(targetPath);
+                            if (dir != null) Directory.CreateDirectory(dir);
+
+                            Stopwatch sw = Stopwatch.StartNew();
+
+                            isLargeFile = _context.LargeFileSizeThresholdBytes > 0
+                                          && captured.Length > _context.LargeFileSizeThresholdBytes;
+                            if (isLargeFile) _context.AcquireLargeFileSlot();
+                            try
+                            {
+                                void OnChunk(string src, string dest, long bytes)
+                                {
+                                    currentTargetFile = dest;
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
+                                    onBytesWritten?.Invoke(src, dest, bytes);
+                                }
+                                FileHelper.CopyFile(captured.FullName, targetPath, OnChunk);
+                                sw.Stop();
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                sw.Stop();
+                                if (currentTargetFile != null && File.Exists(currentTargetFile))
+                                    try { File.Delete(currentTargetFile); } catch { }
+                                return;
+                            }
+                            finally
+                            {
+                                if (isLargeFile) _context.ReleaseLargeFileSlot();
+                            }
+
+                            long encryptionTime = TryEncrypt(targetPath, captured.Extension, cryptoService, settings);
+
+                            lock (_lock)
+                            {
+                                onFileCopied(captured.FullName, targetPath, captured.Length);
+                                logService.Save(new LogEntry
+                                {
+                                    BackupName = job.Name ?? string.Empty,
+                                    SourceFilePath = captured.FullName,
+                                    TargetFilePath = targetPath,
+                                    FileSize = captured.Length,
+                                    FileTransferTimeMs = sw.ElapsedMilliseconds,
+                                    EncryptionTimeMs = encryptionTime,
+                                    Event = "FileCopied"
+                                });
+                            }
                         }
-                        catch (OperationCanceledException)
+                        catch (OperationCanceledException) { }
+                        catch (Exception)
                         {
-                            sw.Stop();
-                            if (currentTargetFile != null && File.Exists(currentTargetFile))
-                                try { File.Delete(currentTargetFile); } catch { }
-                            return; // swallow inside thread; caller checks token after Join
+                            lock (_lock)
+                            {
+                                logService.Save(new LogEntry
+                                {
+                                    BackupName = job.Name ?? string.Empty,
+                                    SourceFilePath = captured.FullName,
+                                    TargetFilePath = "ERROR",
+                                    FileSize = captured.Length,
+                                    FileTransferTimeMs = -1,
+                                    EncryptionTimeMs = 0,
+                                    Event = "CopyError"
+                                });
+                            }
                         }
                         finally
                         {
-                            if (isLargeFile) _context.ReleaseLargeFileSlot();
-                        }
+                            try { if (isPriorityGroup) _context.NotifyPriorityFileDone(); }
+                            catch (ObjectDisposedException) { }
 
-                        long encryptionTime = TryEncrypt(targetPath, captured.Extension, cryptoService, settings);
-
-                        lock (_lock)
-                        {
-                            onFileCopied(captured.FullName, targetPath, captured.Length);
-                            logService.Save(new LogEntry
-                            {
-                                BackupName = job.Name ?? string.Empty,
-                                SourceFilePath = captured.FullName,
-                                TargetFilePath = targetPath,
-                                FileSize = captured.Length,
-                                FileTransferTimeMs = sw.ElapsedMilliseconds,
-                                EncryptionTimeMs = encryptionTime,
-                                Event = "FileCopied"
-                            });
+                            try { threadLimiter.Release(); }
+                            catch (ObjectDisposedException) { }
                         }
-                    }
-                    catch (OperationCanceledException) { /* swallow; caller checks token after Join */ }
-                    catch (Exception)
-                    {
-                        lock (_lock)
-                        {
-                            logService.Save(new LogEntry
-                            {
-                                BackupName = job.Name ?? string.Empty,
-                                SourceFilePath = captured.FullName,
-                                TargetFilePath = "ERROR",
-                                FileSize = captured.Length,
-                                FileTransferTimeMs = -1,
-                                EncryptionTimeMs = 0,
-                                Event = "CopyError"
-                            });
-                        }
-                    }
-                    finally
-                    {
-                        if (isPriorityGroup) _context.NotifyPriorityFileDone();
-                        threadLimiter.Release(); // Free up the slot for the next file
-                    }
-                });
+                    });
 
-                threads.Add(thread);
-                thread.Start();
+                    threads.Add(thread);
+                    thread.Start();
+                }
+            }
+            finally
+            {
+                foreach (var t in threads) t.Join();
             }
 
-            foreach (var t in threads) t.Join();
-
-            // Re-throw if cancelled (threads swallowed OCE internally).
             cancellationToken.ThrowIfCancellationRequested();
         }
 
