@@ -91,11 +91,12 @@ namespace EasySaveWpf
                         if (isLargeFile) _context.AcquireLargeFileSlot();
                         try
                         {
-                            // Wrap callback: check stop (cancellation) per chunk.
+                            // Wrap callback: check stop and pause per chunk.
                             void OnChunk(string src, string dest, long bytes)
                             {
                                 currentTargetFile = dest;
                                 cancellationToken.ThrowIfCancellationRequested();
+                                WaitForGates(businessSoftwareGate, userPauseGate, cancellationToken);
                                 onBytesWritten?.Invoke(src, dest, bytes);
                             }
                             FileHelper.CopyFile(captured.FullName, targetPath, OnChunk);

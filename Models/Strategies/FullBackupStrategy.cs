@@ -46,7 +46,8 @@ namespace EasySaveWpf
                 throw new IOException(_languageManager.GetText("error_finding_files") + ex.Message, ex);
             }
 
-            var prioritized = files.Where(f => settings.PrioritizedExtensions.Contains(f.Extension.ToLowerInvariant())).ToList();
+            var prioritized = files.Where(f => settings.PrioritizedExtensions.Any(ext =>
+                ext.TrimStart('.').Equals(f.Extension.TrimStart('.'), StringComparison.OrdinalIgnoreCase))).ToList();
             var regular = files.Except(prioritized).ToList();
 
             _context.RegisterPriorityFiles(prioritized.Count);
